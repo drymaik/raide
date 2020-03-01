@@ -2,6 +2,7 @@ use gio::prelude::*;
 use glib::clone;
 use glib::{TypedValue, Value};
 use gtk::prelude::*;
+use std::io::Error;
 use gtk::{
     Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
     Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeStore,
@@ -190,10 +191,29 @@ fn main() -> std::io::Result<()> {
         treeview.append_column(&column);
 
         treeview.set_model(Some(&treestore));
-        let row1 = treestore.insert(None, 0);
-        treestore.set_value(&row1, 0, &"My".to_value());
+    
+        //let current_dir = env::current_dir().unwrap().path().into_os_string().into_string().unwrap();
+        let row1 = treestore.insert_with_values(None, None, &[0], &[&"Projekt".to_value()]);
+         let mut paths = fs::read_dir(".").unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, Error>>().unwrap();
+         paths.sort();
 
-        treestore.insert_with_values(Some(&row1), None, &[0], &[&"child"]);
+        let mut file_list = Vec::<String>::new();
+        let current_dir = env::current_dir().unwrap();
+        
+        for path in paths {
+            let cloned = path.as_os_str().to_os_string().into_string().unwrap().clone();
+            let attr = fs::metadata(cloned.clone().as_str().clone());
+            
+           // println!("This: {:?}", attr);
+            file_list.push(cloned.clone());
+        }
+
+        for i in file_list {
+            treestore.insert_with_values(Some(&row1), None, &[0], &[&i.as_str()]);
+        }
+
         let mut second_paned = Paned::new(Orientation::Horizontal);
         second_paned.add1(&treeview);
         second_paned.add2(&paned);
