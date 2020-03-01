@@ -1,16 +1,23 @@
 use gio::prelude::*;
-use gtk::prelude::*;
-use gtk::{Widget,Paned,Box,ScrolledWindow,Adjustment, Menu,Button,MenuBar,MenuItem,Orientation,TextBuffer,TextIter,TextView,
-ToolButton,Toolbar};
 use glib::clone;
+use glib::{TypedValue, Value};
+use gtk::prelude::*;
+use gtk::{
+    Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
+    Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeStore,
+    TreeStoreExt, TreeView, TreeViewColumn, Widget,
+};
+use sourceview::{
+    Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
+    LanguageManagerExt, View, ViewExt,
+};
+use std::cell::RefCell;
 use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::cell::RefCell;
-use std::rc::Rc;
-use sourceview::{Completion, CompletionExt,View,ViewExt,Buffer,Language, LanguageManager, LanguageManagerBuilder, LanguageManagerExt};
 use std::process::Command;
+use std::rc::Rc;
 macro_rules! clone {
   (@param _) => ( _ );
   (@param $x:ident) => ( $x );
@@ -29,63 +36,59 @@ macro_rules! clone {
 }
 
 pub fn save(other_text: String) {
-  fs::write("file.rs", other_text).expect("Should write");
+    fs::write("file.rs", other_text).expect("Should write");
 }
 
-pub fn build_file () -> String {
-  let output = if cfg!(target_os = "windows") {
-    Command::new("cmd")
+pub fn build_file() -> String {
+    let output = if cfg!(target_os = "windows") {
+        Command::new("cmd")
             .args(&["/C", "echo hello"])
             .output()
             .expect("failed to execute process")
-} else {
-    Command::new("rustc")
+    } else {
+        Command::new("rustc")
             .arg("file.rs")
             .output()
             .expect("failed to execute process")
-};
+    };
 
-let hello = output.stderr;
-String::from_utf8(hello).expect("Jey")
+    let hello = output.stderr;
+    String::from_utf8(hello).expect("Jey")
 }
 
-pub fn format_file () -> String {
-  let output = if cfg!(target_os = "windows") {
-    Command::new("cmd")
+pub fn format_file() -> String {
+    let output = if cfg!(target_os = "windows") {
+        Command::new("cmd")
             .args(&["/C", "echo hello"])
             .output()
             .expect("failed to execute process")
-} else {
-    Command::new("rustfmt")
+    } else {
+        Command::new("rustfmt")
             .arg("file.rs")
             .output()
             .expect("failed to execute process")
-};
+    };
 
-let hello = output.stderr;
-String::from_utf8(hello).expect("Jey")
+    let hello = output.stderr;
+    String::from_utf8(hello).expect("Jey")
 }
 
-pub fn run_file () -> String {
-  let output = if cfg!(target_os = "windows") {
-    Command::new("cmd")
+pub fn run_file() -> String {
+    let output = if cfg!(target_os = "windows") {
+        Command::new("cmd")
             .args(&["/C", "echo hello"])
             .output()
             .expect("failed to execute process")
-} else {
-    Command::new("./file")
+    } else {
+        Command::new("./file")
             .output()
             .expect("failed to execute process")
-};
+    };
 
-let hello = output.stdout;
-String::from_utf8(hello).expect("Jey")
+    let hello = output.stdout;
+    String::from_utf8(hello).expect("Jey")
 }
 fn main() -> std::io::Result<()> {
-    
-    // let mut ext = LanguageManagerExt::get_language_ids(&manager);
-  //  builder.get_language_ids();
-    //manager.guess_language(Some("file.rs"))
     let mut file = File::open("file.rs")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -95,17 +98,8 @@ fn main() -> std::io::Result<()> {
     )
     .expect("Application::new failed");
     uiapp.connect_activate(move |app| {
-
-      // let mut buffer = Buffer::new_with_language(&Language{0: "rust", 1: "rust"});
-    //let mut manager = LanguageManager::get_default();
-   // let mut builder = LanguageManagerBuilder::new();
-   //  builder = builder.search_path(vec!["lang".to_string()]);
-  //  let mut manager = builder.build();
-    let mut manager = LanguageManager::new();
-  //  println!("Hier: {:?}", manager.get_language("rust").unwrap());
-    let mut buffer = Buffer::new_with_language(&manager.get_language("rust").unwrap());
-  //  println!("Manager: {:?}", manager);
-
+        let mut manager = LanguageManager::new();
+        let mut buffer = Buffer::new_with_language(&manager.get_language("rust").unwrap());
 
         // We create the main window.
         let win = gtk::ApplicationWindow::new(app);
@@ -113,24 +107,23 @@ fn main() -> std::io::Result<()> {
         win.set_title("RUST-IDE");
 
         let tool_bar = Toolbar::new();
-        let save_button = ToolButton::new::<Widget>(None,Some("Save"));
-        let build_button = ToolButton::new::<Widget>(None,Some("Build"));
-        let run_button = ToolButton::new::<Widget>(None,Some("Run"));
+        let save_button = ToolButton::new::<Widget>(None, Some("Save"));
+        let build_button = ToolButton::new::<Widget>(None, Some("Build"));
+        let run_button = ToolButton::new::<Widget>(None, Some("Run"));
         let format_button = ToolButton::new::<Widget>(None, Some("Format"));
 
-        tool_bar.insert(&save_button,0);
-        tool_bar.insert(&build_button,1);
-        tool_bar.insert(&run_button,2);
-        tool_bar.insert(&format_button,3);
-  
+        tool_bar.insert(&save_button, 0);
+        tool_bar.insert(&build_button, 1);
+        tool_bar.insert(&run_button, 2);
+        tool_bar.insert(&format_button, 3);
+
         let gridbox = Box::new(Orientation::Vertical, 5);
         gridbox.add(&tool_bar);
 
-        
         let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         text_window.set_min_content_height(500);
-      //  text_window.set_max_content_height(500);
+        //  text_window.set_max_content_height(500);
         let textview = View::new();
         textview.set_highlight_current_line(true);
         textview.set_auto_indent(true);
@@ -146,12 +139,11 @@ fn main() -> std::io::Result<()> {
         text_window.add(&textview);
         textview.set_buffer(Some(&buffer));
         let textbuffer = textview.get_buffer().unwrap();
-        
 
         let console_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         console_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         console_window.set_min_content_height(500);
-       // console_window.set_max_content_height(500);
+        // console_window.set_max_content_height(500);
         let outputview = TextView::new();
         console_window.add(&outputview);
         outputview.set_property("editable", &false);
@@ -163,35 +155,51 @@ fn main() -> std::io::Result<()> {
         let outputbuffer_clone = outputbuffer.clone();
         let textbuffer_clone = textbuffer.clone();
         build_button.connect_clicked(move |_| {
-          // Hier
-          save_it(&textbuffer);
-          let my_string = build_file();
-          outputbuffer.set_text(my_string.as_str());
-          
+            // Hier
+            save_it(&textbuffer);
+            let my_string = build_file();
+            outputbuffer.set_text(my_string.as_str());
         });
         let textbuffer_clone_clone = textbuffer_clone.clone();
         run_button.connect_clicked(move |_| {
-          save_it(&textbuffer_clone);
-          let my_string = run_file();
-          outputbuffer_clone.set_text(my_string.as_str());
+            save_it(&textbuffer_clone);
+            let my_string = run_file();
+            outputbuffer_clone.set_text(my_string.as_str());
         });
         let textbuffer_clone_clone_clone = textbuffer_clone_clone.clone();
 
-        
         save_button.connect_clicked(move |_| {
-          save_it(&textbuffer_clone_clone);
+            save_it(&textbuffer_clone_clone);
         });
 
         format_button.connect_clicked(move |_| {
-          format_it(&textbuffer_clone_clone_clone);
+            format_it(&textbuffer_clone_clone_clone);
         });
 
         let mut paned = Paned::new(Orientation::Vertical);
         paned.add1(&text_window);
         paned.add2(&console_window);
-        //gridbox.add(&text_window);
-        //gridbox.add(&console_window);
-        gridbox.add(&paned);
+
+        let treestore = TreeStore::new(&[String::static_type()]);
+        let treeview = TreeView::new();
+
+        let column = TreeViewColumn::new();
+        let cell = CellRendererText::new();
+        column.pack_start(&cell, true);
+        column.add_attribute(&cell, "text", 0);
+        treeview.append_column(&column);
+
+        treeview.set_model(Some(&treestore));
+        let row1 = treestore.insert(None, 0);
+        treestore.set_value(&row1, 0, &"My".to_value());
+
+        treestore.insert_with_values(Some(&row1), None, &[0], &[&"child"]);
+        let mut second_paned = Paned::new(Orientation::Horizontal);
+        second_paned.add1(&treeview);
+        second_paned.add2(&paned);
+
+        gridbox.add(&second_paned);
+
         win.add(&gridbox);
 
         // Don't forget to make all widgets visible.
@@ -203,19 +211,19 @@ fn main() -> std::io::Result<()> {
 }
 
 pub fn save_it(textbuffer: &TextBuffer) {
-  let text_iter_start = textbuffer.get_start_iter();
-  let text_iter_end = textbuffer.get_end_iter();
-  let the_text = textbuffer.get_text(&text_iter_start, &text_iter_end,true);
-  let other_text = the_text.expect("Hey").to_string();
-  fs::write("file.rs", other_text).expect("Should write");
+    let text_iter_start = textbuffer.get_start_iter();
+    let text_iter_end = textbuffer.get_end_iter();
+    let the_text = textbuffer.get_text(&text_iter_start, &text_iter_end, true);
+    let other_text = the_text.expect("Hey").to_string();
+    fs::write("file.rs", other_text).expect("Should write");
 }
 
 pub fn format_it(textbuffer: &TextBuffer) -> std::io::Result<()> {
-  save_it(&textbuffer);
-  format_file();
+    save_it(&textbuffer);
+    format_file();
 
-  // Neuladen
-  let mut file = File::open("file.rs")?;
+    // reload
+    let mut file = File::open("file.rs")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     textbuffer.set_text(&contents);
