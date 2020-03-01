@@ -4,9 +4,9 @@ use glib::{TypedValue, Value};
 use gtk::prelude::*;
 use std::io::Error;
 use gtk::{
-    Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
+    Adjustment, TreeSelection, TreeSelectionExt, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
     Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeStore,
-    TreeStoreExt, TreeView, TreeViewColumn, Widget,
+    TreeStoreExt, TreeView,TreeViewExt, TreeViewColumn, Widget,
 };
 use sourceview::{
     Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
@@ -192,9 +192,10 @@ fn main() -> std::io::Result<()> {
 
         treeview.set_model(Some(&treestore));
     
+        
         //let current_dir = env::current_dir().unwrap().path().into_os_string().into_string().unwrap();
         let row1 = treestore.insert_with_values(None, None, &[0], &[&"Projekt".to_value()]);
-         let mut paths = fs::read_dir(".").unwrap()
+        let mut paths = fs::read_dir(".").unwrap()
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, Error>>().unwrap();
          paths.sort();
@@ -213,6 +214,28 @@ fn main() -> std::io::Result<()> {
         for i in file_list {
             treestore.insert_with_values(Some(&row1), None, &[0], &[&i.as_str()]);
         }
+
+        let mut tree_selection = treeview.get_selection();
+        /*
+        tree_selection.connect_changed(clone!(@weak right_tree => move |tree_selection| {
+            let (left_model, iter) = tree_selection.get_selected().expect("Couldn't get selected");
+            let mut path = left_model.get_path(&iter).expect("Couldn't get path");
+            // get the top-level element path
+            while path.get_depth() > 1 {
+                path.up();
+            }
+            right_tree.get_selection().select_path(&path);
+        }));
+        */
+        tree_selection.connect_changed(|tree_selection| {
+            let (my_model,my_iter) = tree_selection.get_selected().unwrap();
+            println!("{:?} ", my_model.get_value(&my_iter,0).get::<String>().unwrap().unwrap());
+            // 
+            println!("Element selected");
+        });
+
+ //       let mut element = tree_selection.get_selected().unwrap();
+ //       println!("{:?}",element);
 
         let mut second_paned = Paned::new(Orientation::Horizontal);
         second_paned.add1(&treeview);
