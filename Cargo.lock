@@ -332,22 +332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gtknuke"
-version = "0.1.0"
-dependencies = [
- "atk",
- "cairo-rs",
- "gdk",
- "gdk-pixbuf",
- "gio",
- "glib",
- "gtk",
- "pango",
- "pangocairo",
- "sourceview",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -462,6 +446,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "raide"
+version = "0.1.0"
+dependencies = [
+ "atk",
+ "cairo-rs",
+ "gdk",
+ "gdk-pixbuf",
+ "gio",
+ "glib",
+ "gtk",
+ "pango",
+ "pangocairo",
+ "sourceview",
 ]
 
 [[package]]

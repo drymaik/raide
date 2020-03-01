@@ -6,16 +6,12 @@ pub fn main() {
             println!("{},{}", i, j);
         }
     }
-    let my_number = factorial(20);
-    println!("My number is: {}", my_number);
-    println!("Happy birthday!");
+    let my_factorial = factorial(20);
+    println!("My factorial is: {}", my_factorial);
 }
 
 pub fn factorial(n: u64) -> u64 {
     let mut result = 1;
-    if n == 0 {
-        return n;
-    }
     for i in 1..n + 1 {
         result *= i;
     }

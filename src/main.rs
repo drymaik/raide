@@ -36,6 +36,10 @@ macro_rules! clone {
   );
 }
 
+pub struct FileData {
+    pub display_name: String,
+    pub path: String
+}
 pub fn save(other_text: String) {
     fs::write("file.rs", other_text).expect("Should write");
 }
@@ -105,7 +109,7 @@ fn main() -> std::io::Result<()> {
         // We create the main window.
         let win = gtk::ApplicationWindow::new(app);
         win.set_default_size(640, 480);
-        win.set_title("RUST-IDE");
+        win.set_title("Raide");
 
         let tool_bar = Toolbar::new();
         let save_button = ToolButton::new::<Widget>(None, Some("Save"));
@@ -134,8 +138,8 @@ fn main() -> std::io::Result<()> {
         textview.set_show_line_numbers(true);
         //textview.set_show_right_margin(true);
         // textview.set_smart_backspace(true);
-        let my_obj = textview.get_completion();
-        println!("Completion: {:?}", my_obj);
+       // let my_obj = textview.get_completion();
+      // println!("Completion: {:?}", my_obj);
 
         text_window.add(&textview);
         textview.set_buffer(Some(&buffer));
@@ -157,31 +161,34 @@ fn main() -> std::io::Result<()> {
         let textbuffer_clone = textbuffer.clone();
         build_button.connect_clicked(move |_| {
             // Hier
-            save_it(&textbuffer);
+            save_it(&textbuffer_clone);
             let my_string = build_file();
             outputbuffer.set_text(my_string.as_str());
         });
-        let textbuffer_clone_clone = textbuffer_clone.clone();
+        let textbuffer_clone = textbuffer.clone();
         run_button.connect_clicked(move |_| {
             save_it(&textbuffer_clone);
             let my_string = run_file();
             outputbuffer_clone.set_text(my_string.as_str());
         });
-        let textbuffer_clone_clone_clone = textbuffer_clone_clone.clone();
+        let textbuffer_clone = textbuffer.clone();
 
         save_button.connect_clicked(move |_| {
-            save_it(&textbuffer_clone_clone);
+            save_it(&textbuffer_clone);
         });
 
+        let textbuffer_clone = textbuffer.clone();
+
         format_button.connect_clicked(move |_| {
-            format_it(&textbuffer_clone_clone_clone);
+            format_it(&textbuffer_clone);
         });
 
         let mut paned = Paned::new(Orientation::Vertical);
         paned.add1(&text_window);
         paned.add2(&console_window);
 
-        let treestore = TreeStore::new(&[String::static_type()]);
+        // Store the shown filename and the full path
+        let treestore = TreeStore::new(&[String::static_type(), String::static_type()]);
         let treeview = TreeView::new();
 
         let column = TreeViewColumn::new();
@@ -190,17 +197,24 @@ fn main() -> std::io::Result<()> {
         column.add_attribute(&cell, "text", 0);
         treeview.append_column(&column);
 
+        let path_column = TreeViewColumn::new();
+        let path_cell = CellRendererText::new();
+        path_column.pack_start(&path_cell, true);
+        path_column.add_attribute(&path_cell, "text", 1);
+        path_column.set_visible(false);
+        treeview.append_column(&path_column);
+
         treeview.set_model(Some(&treestore));
     
         
         //let current_dir = env::current_dir().unwrap().path().into_os_string().into_string().unwrap();
-        let row1 = treestore.insert_with_values(None, None, &[0], &[&"Projekt".to_value()]);
+        let row1 = treestore.insert_with_values(None, None, &[0,1], &[&"Projekt".to_value(),&"Value".to_value()]);
         let mut paths = fs::read_dir(".").unwrap()
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, Error>>().unwrap();
          paths.sort();
 
-        let mut file_list = Vec::<String>::new();
+        let mut file_list = Vec::<FileData>::new();
         let current_dir = env::current_dir().unwrap();
         
         for path in paths {
@@ -208,37 +222,28 @@ fn main() -> std::io::Result<()> {
             let attr = fs::metadata(cloned.clone().as_str().clone());
             
            // println!("This: {:?}", attr);
-            file_list.push(cloned.clone());
+            file_list.push(FileData{display_name: cloned.clone(), path: cloned.clone()});
         }
 
+        let mut test_prefix = "test";
         for i in file_list {
-            treestore.insert_with_values(Some(&row1), None, &[0], &[&i.as_str()]);
+
+            treestore.insert_with_values(Some(&row1), None, &[0,1], &[&i.display_name.as_str(),&(test_prefix.to_owned() + i.path.as_str())]);
         }
 
         let mut tree_selection = treeview.get_selection();
-        /*
-        tree_selection.connect_changed(clone!(@weak right_tree => move |tree_selection| {
-            let (left_model, iter) = tree_selection.get_selected().expect("Couldn't get selected");
-            let mut path = left_model.get_path(&iter).expect("Couldn't get path");
-            // get the top-level element path
-            while path.get_depth() > 1 {
-                path.up();
-            }
-            right_tree.get_selection().select_path(&path);
-        }));
-        */
         tree_selection.connect_changed(|tree_selection| {
             let (my_model,my_iter) = tree_selection.get_selected().unwrap();
-            println!("{:?} ", my_model.get_value(&my_iter,0).get::<String>().unwrap().unwrap());
-            // 
-            println!("Element selected");
+
+            println!("{:?} ", my_model.get_value(&my_iter,1).get::<String>().unwrap().unwrap()); 
         });
 
- //       let mut element = tree_selection.get_selected().unwrap();
- //       println!("{:?}",element);
-
         let mut second_paned = Paned::new(Orientation::Horizontal);
-        second_paned.add1(&treeview);
+
+        let project_pane = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+       
+        project_pane.add(&treeview);
+        second_paned.add1(&project_pane);
         second_paned.add2(&paned);
 
         gridbox.add(&second_paned);

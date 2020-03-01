@@ -1,5 +1,5 @@
 [package]
-name = "gtknuke"
+name = "raide"
 version = "0.1.0"
 authors = ["Maik Fischer <maik.fischer@uni-oldenburg.de>"]
 edition = "2018"
