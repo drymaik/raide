@@ -1,3 +1,4 @@
+use raide::mapping::{get_by_left,get_by_right};
 use gio::prelude::*;
 use glib::clone;
 use glib::{TypedValue, Value};
@@ -16,6 +17,7 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::env;
 use std::fs;
+use std::ffi::OsStr;
 use std::fs::{metadata, File};
 use std::io::prelude::*;
 use std::io::Error;
@@ -23,6 +25,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
+
 macro_rules! clone {
   (@param _) => ( _ );
   (@param $x:ident) => ( $x );
@@ -114,7 +117,7 @@ fn main() -> std::io::Result<()> {
         let win = gtk::ApplicationWindow::new(app);
         win.set_default_size(1024, 768);
         win.set_title("Raide");
-
+        
         let tool_bar = Toolbar::new();
         let save_button = ToolButton::new::<Widget>(None, Some("Save"));
         let build_button = ToolButton::new::<Widget>(None, Some("Build"));
@@ -234,19 +237,60 @@ fn main() -> std::io::Result<()> {
         for path in paths {
             add_node(&treestore, &path, None);
         }
-
+        let textbuffer_clone = textbuffer.clone();
         let mut tree_selection = treeview.get_selection();
-        tree_selection.connect_changed(|tree_selection| {
+        tree_selection.connect_changed(move |tree_selection| {
             let (my_model, my_iter) = tree_selection.get_selected().unwrap();
+            let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
+            println!("{}", path_string);
+            // Exchange view
+            let my_path = Path::new(path_string.as_str());
+            if my_path.exists() {
+                let mut my_file = File::open(my_path).unwrap();
+                let mut contents = String::new();
+                my_file.read_to_string(&mut contents).unwrap();
+                // Reset language based on file extension
+                let mut extension = get_extension_from_filename(path_string.as_str());
+                println!("{:?}", extension);
+                match extension {
+                    None => {
+                        // Set to markdown for displaying text
+                        extension = Some("md");
+                    }
+                    Some(ext) => {
+                        let lookup = get_by_left(ext);
+                        match lookup {
+                            // Non programming language extension
+                            None => {
+                                extension = Some("md");
+                            }
+                            // matched lang string
+                            Some(lang) => {
+                                
+                                // Only Buffer instead of TextBuffer has the language setting method
+                                let buffer_hack = Buffer::new_with_language(&manager.get_language(lang).unwrap());
+                                let text_iter_start = textbuffer_clone.get_start_iter();
+                                let text_iter_end = textbuffer_clone.get_end_iter();
+                                let the_text = textbuffer_clone.get_text(&text_iter_start, &text_iter_end, true);
+                                buffer_hack.set_text(the_text.unwrap().as_str());
+                                // Now replacing the views buffer
+                                textview.set_buffer(Some(&buffer_hack));
+                                //textbuffer_clone.set_language();
+                                //let
+                                // &manager.get_language("rust").unwrap() 
+                            }
+                        }
+                    }
+                }
+                
+                // Needs extension manager
+                textbuffer_clone.set_text(&contents);
 
-            println!(
-                "{:?} ",
-                my_model
-                    .get_value(&my_iter, 1)
-                    .get::<String>()
-                    .unwrap()
-                    .unwrap()
-            );
+                //println!("Contents: {}", contents);    
+            }
+            
+
+            // println!("File exists? {}", Path::new(path_string.as_str()).exists());
         });
 
         let mut second_paned = Paned::new(Orientation::Horizontal);
@@ -268,6 +312,14 @@ fn main() -> std::io::Result<()> {
 
     Ok(())
 }
+
+// https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
+pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
+    Path::new(filename)
+        .extension()
+        .and_then(OsStr::to_str)
+}
+
 // https://github.com/oakes/SolidOak/blob/master/src/ui.rs
 pub fn path_sorter(a: &PathBuf, b: &PathBuf) -> Ordering {
     if let Some(a_os_str) = a.deref().file_name() {
