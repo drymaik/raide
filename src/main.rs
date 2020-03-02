@@ -7,7 +7,7 @@ use gtk::{
     Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
     Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeIter,
     TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
-    TreeViewExt, Widget,
+    TreeViewExt, Widget,Notebook,NotebookExt,Label,LabelExt,
 };
 use sourceview::{
     Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
@@ -191,7 +191,14 @@ fn main() -> std::io::Result<()> {
         });
 
         let mut paned = Paned::new(Orientation::Vertical);
-        paned.add1(&text_window);
+        // Now adding a notebook and inside the tabs with text_windows
+        //paned.add1(&text_window);
+        let mut notebook = Notebook::new();
+        let mut label = Label::new(Some(&"Text"));
+        let mut other_label = Label::new(Some(&"Other"));
+        notebook.append_page(&text_window,Some(&label));
+        notebook.append_page(&text_window,Some(&other_label));
+        paned.add1(&notebook);
         paned.add2(&console_window);
 
         // Store the shown filename and the full path
