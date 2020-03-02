@@ -2,21 +2,25 @@ use gio::prelude::*;
 use glib::clone;
 use glib::{TypedValue, Value};
 use gtk::prelude::*;
-use std::io::Error;
 use gtk::{
-    Adjustment, TreeSelection, TreeSelectionExt, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
-    Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeStore,
-    TreeStoreExt, TreeView,TreeViewExt, TreeViewColumn, Widget,
+    Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
+    Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeIter,
+    TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
+    TreeViewExt, Widget,
 };
 use sourceview::{
     Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
     LanguageManagerExt, View, ViewExt,
 };
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::env;
 use std::fs;
-use std::fs::File;
+use std::fs::{metadata, File};
 use std::io::prelude::*;
+use std::io::Error;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 macro_rules! clone {
@@ -38,7 +42,7 @@ macro_rules! clone {
 
 pub struct FileData {
     pub display_name: String,
-    pub path: String
+    pub path: String,
 }
 pub fn save(other_text: String) {
     fs::write("file.rs", other_text).expect("Should write");
@@ -108,7 +112,7 @@ fn main() -> std::io::Result<()> {
 
         // We create the main window.
         let win = gtk::ApplicationWindow::new(app);
-        win.set_default_size(640, 480);
+        win.set_default_size(1024, 768);
         win.set_title("Raide");
 
         let tool_bar = Toolbar::new();
@@ -138,8 +142,8 @@ fn main() -> std::io::Result<()> {
         textview.set_show_line_numbers(true);
         //textview.set_show_right_margin(true);
         // textview.set_smart_backspace(true);
-       // let my_obj = textview.get_completion();
-      // println!("Completion: {:?}", my_obj);
+        // let my_obj = textview.get_completion();
+        // println!("Completion: {:?}", my_obj);
 
         text_window.add(&textview);
         textview.set_buffer(Some(&buffer));
@@ -205,43 +209,50 @@ fn main() -> std::io::Result<()> {
         treeview.append_column(&path_column);
 
         treeview.set_model(Some(&treestore));
-    
-        
+
         //let current_dir = env::current_dir().unwrap().path().into_os_string().into_string().unwrap();
-        let row1 = treestore.insert_with_values(None, None, &[0,1], &[&"Projekt".to_value(),&"Value".to_value()]);
-        let mut paths = fs::read_dir(".").unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, Error>>().unwrap();
-         paths.sort();
+        treestore.insert_with_values(
+            None,
+            None,
+            &[0, 1],
+            &[
+                &"Project".to_value(),
+                &"Placeholder for Overview".to_value(),
+            ],
+        );
 
-        let mut file_list = Vec::<FileData>::new();
-        let current_dir = env::current_dir().unwrap();
-        
+        let mut paths = fs::read_dir(".")
+            .unwrap()
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, Error>>()
+            .unwrap();
+        paths.sort();
+
+        // files that should be ignored
+        // let mut exclude_list = Vec::<String>::new();
+        // exclude_list.push("target".to_owned());
         for path in paths {
-            let cloned = path.as_os_str().to_os_string().into_string().unwrap().clone();
-            let attr = fs::metadata(cloned.clone().as_str().clone());
-            
-           // println!("This: {:?}", attr);
-            file_list.push(FileData{display_name: cloned.clone(), path: cloned.clone()});
-        }
-
-        let mut test_prefix = "test";
-        for i in file_list {
-
-            treestore.insert_with_values(Some(&row1), None, &[0,1], &[&i.display_name.as_str(),&(test_prefix.to_owned() + i.path.as_str())]);
+            add_node(&treestore, &path, None);
         }
 
         let mut tree_selection = treeview.get_selection();
         tree_selection.connect_changed(|tree_selection| {
-            let (my_model,my_iter) = tree_selection.get_selected().unwrap();
+            let (my_model, my_iter) = tree_selection.get_selected().unwrap();
 
-            println!("{:?} ", my_model.get_value(&my_iter,1).get::<String>().unwrap().unwrap()); 
+            println!(
+                "{:?} ",
+                my_model
+                    .get_value(&my_iter, 1)
+                    .get::<String>()
+                    .unwrap()
+                    .unwrap()
+            );
         });
 
         let mut second_paned = Paned::new(Orientation::Horizontal);
 
         let project_pane = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-       
+
         project_pane.add(&treeview);
         second_paned.add1(&project_pane);
         second_paned.add2(&paned);
@@ -256,6 +267,52 @@ fn main() -> std::io::Result<()> {
     uiapp.run(&env::args().collect::<Vec<_>>());
 
     Ok(())
+}
+// https://github.com/oakes/SolidOak/blob/master/src/ui.rs
+pub fn path_sorter(a: &PathBuf, b: &PathBuf) -> Ordering {
+    if let Some(a_os_str) = a.deref().file_name() {
+        if let Some(b_os_str) = b.deref().file_name() {
+            return a_os_str.cmp(&b_os_str);
+        }
+    }
+    Ordering::Equal
+}
+
+pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) {
+    if let Some(full_path_str) = node.to_str() {
+        if let Some(leaf_os_str) = node.file_name() {
+            if let Some(leaf_str) = leaf_os_str.to_str() {
+                if !(leaf_str.starts_with(".") || leaf_str.starts_with("target")) {
+                    let iter = tree_store.append(parent);
+                    tree_store.set(
+                        &iter,
+                        &[0, 1],
+                        &[&String::from(leaf_str), &String::from(full_path_str)],
+                    );
+
+                    // Fetch metadata of node
+
+                    if metadata(node).map(|m| m.is_dir()).unwrap_or(false) {
+                        match fs::read_dir(node) {
+                            Ok(child_iter) => {
+                                let mut child_vec = Vec::new();
+                                for child in child_iter {
+                                    if let Ok(dir_entry) = child {
+                                        child_vec.push(dir_entry.path());
+                                    }
+                                }
+                                child_vec.sort_by(path_sorter);
+                                for child in child_vec.iter() {
+                                    add_node(tree_store, child.deref(), Some(&iter));
+                                }
+                            }
+                            Err(e) => println!("Error updating tree: {}", e),
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn save_it(textbuffer: &TextBuffer) {
