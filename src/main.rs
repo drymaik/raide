@@ -3,7 +3,7 @@ use gio::prelude::*;
 use glib::{TypedValue, clone, Value};
 use gtk::prelude::*;
 use gtk::{
-    Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
+    Adjustment, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
     Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeIter,
     TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
     TreeViewExt, Widget,Notebook,NotebookExt,Label,LabelExt,IconSize, ReliefStyle,
@@ -59,7 +59,7 @@ fn main() -> std::io::Result<()> {
         tool_bar.insert(&run_button, 2);
         tool_bar.insert(&format_button, 3);
 
-        let gridbox = Box::new(Orientation::Vertical, 5);
+        let gridbox = gtk::Box::new(Orientation::Vertical, 5);
         gridbox.add(&tool_bar);
 
         // No text window, only notebook added
@@ -100,6 +100,7 @@ fn main() -> std::io::Result<()> {
 
        // textbuffer.set_text(&contents);
 
+       /*
         let outputbuffer_clone = outputbuffer.clone();
         let textbuffer_clone = textbuffer.clone();
         build_button.connect_clicked(move |_| {
@@ -126,6 +127,8 @@ fn main() -> std::io::Result<()> {
         format_button.connect_clicked(move |_| {
             format_it(&textbuffer_clone);
         });
+
+        */
 
         // Store the shown filename and the full path
         let treestore = TreeStore::new(&[String::static_type(), String::static_type()]);
@@ -174,11 +177,11 @@ fn main() -> std::io::Result<()> {
 
         // paths added, now generate tabs
 
-        let textbuffer_clone = textbuffer.clone();
+   //     let textbuffer_clone = textbuffer.clone();
        
 
         let mut paned = Paned::new(Orientation::Vertical);
-        let mut tree_selection = treeview.get_selection();
+        let mut tree_selection = treeview.get_selection().clone();
         
         let mut notebook = Notebook::new();
         let mut other_scrolled = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
@@ -194,12 +197,81 @@ fn main() -> std::io::Result<()> {
         
 
         let mut second_paned = Paned::new(Orientation::Horizontal);
-
+        let mut tree_selection = tree_selection.clone();
         let project_pane = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
 
         project_pane.add(&treeview);
         second_paned.add1(&project_pane);
-        let my_ui = ui::UI{};
+        let mut tabs = Vec::<gtk::Box>::new();
+        let my_ui = Rc::new(RefCell::new(UI {lang: manager.clone(), notebook: notebook.clone(), tabs: tabs.clone(), tree_selection: tree_selection.clone() }));
+        let my_ui = my_ui.clone();
+        // Insert
+        tree_selection.connect_changed(clone!(@weak tree_selection => move |_| {
+            // That works
+            let notebook = &my_ui.deref().borrow_mut().notebook;
+            let (my_model, my_iter) = tree_selection.get_selected().unwrap();
+            let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
+            let last_string = my_model.get_value(&my_iter, 0).get::<String>().unwrap().unwrap();
+            println!("{}", path_string);
+           
+            let my_path = Path::new(path_string.as_str());
+            if my_path.exists() {
+                let mut my_file = File::open(my_path).unwrap();
+                let mut contents = String::new();
+                my_file.read_to_string(&mut contents).unwrap();
+                
+                let mut extension = get_extension_from_filename(path_string.as_str());
+                println!("{:?}", extension);
+    
+                let mut scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+                //let mut my_buffer = Buffer::new_with_language(&manager.get_language("md").unwrap());
+    
+                //my_buffer.set_text(contents.as_str());
+                
+                let mut my_view = View::new();
+                
+    
+                match extension {
+                    None => {
+                        // Set to markdown for displaying text
+                        extension = Some("md");
+                        let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                        my_view.set_buffer(Some(&my_buffer));
+                        scrolled_window.add(&my_view);
+                        let mut tabs = tabs.clone();
+                        create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+    
+                    }
+                    Some(ext) => {
+                        let lookup = get_by_left(ext);
+                        match lookup {
+                            // Non programming language extension
+                            None => {
+                                extension = Some("md");
+                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                                my_view.set_buffer(Some(&my_buffer));
+                                scrolled_window.add(&my_view);
+                                let mut tabs = tabs.clone();
+                                create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                            }
+                            // matched lang string
+                            Some(lang) => {
+                                
+                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());    
+                                my_view.set_buffer(Some(&my_buffer));
+                                scrolled_window.add(&my_view);
+                                let mut tabs = tabs.clone();
+                                create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                            }
+                        }
+                    }
+                }    
+            }
+            
+    
+            // println!("File exists? {}", Path::new(path_string.as_str()).exists());
+        }));
+
         paned.add1(&notebook);
         paned.add2(&console_window);
         second_paned.add2(&paned);
@@ -246,7 +318,6 @@ pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) 
                     );
 
                     // Fetch metadata of node
-
                     if metadata(node).map(|m| m.is_dir()).unwrap_or(false) {
                         match fs::read_dir(node) {
                             Ok(child_iter) => {
@@ -270,6 +341,7 @@ pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) 
     }
 }
 
+// Dependent on current tab
 pub fn save_it(textbuffer: &TextBuffer) {
     let text_iter_start = textbuffer.get_start_iter();
     let text_iter_end = textbuffer.get_end_iter();
@@ -278,11 +350,12 @@ pub fn save_it(textbuffer: &TextBuffer) {
     fs::write("file.rs", other_text).expect("Should write");
 }
 
+// Dependent on current tab
 pub fn format_it(textbuffer: &TextBuffer) -> std::io::Result<()> {
     save_it(&textbuffer);
     format_file();
 
-    // reload
+    // TODO reload file from selecters full file name
     let mut file = File::open("file.rs")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -290,6 +363,8 @@ pub fn format_it(textbuffer: &TextBuffer) -> std::io::Result<()> {
     Ok(())
 }
  
+
+// create tab based on ui elements
 pub fn create_tab(notebook: &Notebook , tabs: &mut Vec<gtk::Box>, title: &str, widget: Widget) -> u32 {
     let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
     let button = gtk::Button::new();
@@ -319,6 +394,7 @@ pub fn create_tab(notebook: &Notebook , tabs: &mut Vec<gtk::Box>, title: &str, w
     index
 }
 
+// Based on ui elements, removing method head
 pub fn click_listener(tree_selection: &TreeSelection, manager: &LanguageManager, notebook: Notebook, tabs: &mut Vec<gtk::Box>) {
     let mut tabs = tabs.clone();
     tree_selection.connect_changed(clone!(@weak tree_selection, @weak manager  => move |_| {
@@ -386,12 +462,8 @@ pub fn click_listener(tree_selection: &TreeSelection, manager: &LanguageManager,
     }));
 }
 
-// Save file with selected tab -> file relation
-pub fn save(other_text: String) {
-fs::write("file.rs", other_text).expect("Should write");
-}
 
-// Build file depending on selected tab -> project relation
+// Build file depending on selected tab -> project relation with custom position
 pub fn build_file() -> String {
 let output = if cfg!(target_os = "windows") {
     Command::new("cmd")
