@@ -9,6 +9,7 @@ use gtk::{
     TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
     TreeViewExt, Widget,Notebook,NotebookExt,Label,LabelExt,
 };
+use gtk::{IconSize, ReliefStyle};
 use sourceview::{
     Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
     LanguageManagerExt, View, ViewExt,
@@ -26,7 +27,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 
-macro_rules! clone {
+/*
+macro_rules! myclone {
   (@param _) => ( _ );
   (@param $x:ident) => ( $x );
   ($($n:ident),+ => move || $body:expr) => (
@@ -41,6 +43,50 @@ macro_rules! clone {
           move |$(clone!(@param $p),)+| $body
       }
   );
+}
+*/
+
+pub struct TabPanel {
+    notebook: Notebook,
+    tabs: Vec<gtk::Box>,
+}
+
+impl TabPanel {
+    fn new() -> TabPanel {
+        TabPanel {
+            notebook: gtk::Notebook::new(),
+            tabs: Vec::new(),
+        }
+    }
+
+    fn create_tab(&mut self, title: &str, widget: Widget) -> u32 {
+        let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
+        let button = gtk::Button::new();
+        let label = gtk::Label::new(Some(title));
+        let tab = gtk::Box::new(Orientation::Horizontal, 0);
+
+        button.set_relief(ReliefStyle::None);
+        button.set_focus_on_click(false);
+        button.add(&close_image);
+
+        tab.pack_start(&label, false, false, 0);
+        tab.pack_start(&button, false, false, 0);
+        tab.show_all();
+
+        let index = self.notebook.append_page(&widget, Some(&tab));
+
+
+        button.connect_clicked(clone!(@weak self.notebook as notebook => move |_| {
+            let index = notebook
+                .page_num(&widget)
+                .expect("Couldn't get page_num from notebook");
+            notebook.remove_page(Some(index));
+        }));
+
+        self.tabs.push(tab);
+
+        index
+    }
 }
 
 pub struct FileData {
@@ -115,6 +161,7 @@ fn main() -> std::io::Result<()> {
 
         // We create the main window.
         let win = gtk::ApplicationWindow::new(app);
+        win.set_position(gtk::WindowPosition::Center);
         win.set_default_size(1024, 768);
         win.set_title("Raide");
         
@@ -193,12 +240,27 @@ fn main() -> std::io::Result<()> {
         let mut paned = Paned::new(Orientation::Vertical);
         // Now adding a notebook and inside the tabs with text_windows
         //paned.add1(&text_window);
-        let mut notebook = Notebook::new();
-        let mut label = Label::new(Some(&"Text"));
-        let mut other_label = Label::new(Some(&"Other"));
-        notebook.append_page(&text_window,Some(&label));
-        notebook.append_page(&text_window,Some(&other_label));
-        paned.add1(&notebook);
+        let mut notebook = TabPanel::new();
+
+       // let mut label = Label::new(Some(&"Text"));
+      //  let mut other_label = Label::new(Some(&"Other"));
+        let mut other_scrolled = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+        let mut my_test = Label::new(Some(&"Hello-Content"));
+        other_scrolled.add(&my_test);
+       // notebook.append_page(&text_window,Some(&label));
+       // notebook.append_page(&text_window,Some(&other_label));
+        
+        notebook.create_tab("First", text_window.upcast());
+        notebook.create_tab("Second", other_scrolled.upcast());
+
+        notebook.notebook.popup_enable();
+        notebook.notebook.set_scrollable(true);
+        notebook.notebook.set_show_border(true);
+
+        //notebook.connect_switch_page(move || {
+
+      //  });
+        paned.add1(&notebook.notebook);
         paned.add2(&console_window);
 
         // Store the shown filename and the full path
@@ -274,6 +336,7 @@ fn main() -> std::io::Result<()> {
                             // matched lang string
                             Some(lang) => {
                                 
+                                /*
                                 // Only Buffer instead of TextBuffer has the language setting method
                                 let buffer_hack = Buffer::new_with_language(&manager.get_language(lang).unwrap());
                                 let text_iter_start = textbuffer_clone.get_start_iter();
@@ -282,9 +345,8 @@ fn main() -> std::io::Result<()> {
                                 buffer_hack.set_text(the_text.unwrap().as_str());
                                 // Now replacing the views buffer
                                 textview.set_buffer(Some(&buffer_hack));
-                                //textbuffer_clone.set_language();
-                                //let
-                                // &manager.get_language("rust").unwrap() 
+                               
+                               */
                             }
                         }
                     }
