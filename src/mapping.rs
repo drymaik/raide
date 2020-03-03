@@ -1,9 +1,12 @@
 //pub mod mapping;
 use std::collections::HashMap;
 
+// (glob, lang)
+// extensions should be splitted by ; and compared individually
 pub static LANG_TYPES: &[(&str, &str)] = &[
     ("rs", "rust"),
-    ("java", "java")
+    ("java", "java"),
+
 ];
 
 pub fn get_by_left(glob: &str) -> Option<&str> {

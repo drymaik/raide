@@ -2,6 +2,7 @@
 //!
 //! Raide is a ray of light in the world of IDEs
 pub mod mapping;
+pub mod ui;
 #[cfg(test)]
 mod tests {
     /*

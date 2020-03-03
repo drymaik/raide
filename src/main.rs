@@ -1,15 +1,13 @@
 use raide::mapping::{get_by_left,get_by_right};
 use gio::prelude::*;
-use glib::clone;
-use glib::{TypedValue, Value};
+use glib::{TypedValue, clone, Value};
 use gtk::prelude::*;
 use gtk::{
     Adjustment, Box, Button, CellRendererText, ListStore, Menu, MenuBar, MenuItem, Orientation,
     Paned, ScrolledWindow, TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeIter,
     TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
-    TreeViewExt, Widget,Notebook,NotebookExt,Label,LabelExt,
+    TreeViewExt, Widget,Notebook,NotebookExt,Label,LabelExt,IconSize, ReliefStyle,
 };
-use gtk::{IconSize, ReliefStyle};
 use sourceview::{
     Buffer, Completion, CompletionExt, Language, LanguageManager, LanguageManagerBuilder,
     LanguageManagerExt, View, ViewExt,
@@ -26,138 +24,23 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
-
-/*
-macro_rules! myclone {
-  (@param _) => ( _ );
-  (@param $x:ident) => ( $x );
-  ($($n:ident),+ => move || $body:expr) => (
-      {
-          $( let $n = $n.clone(); )+
-          move || $body
-      }
-  );
-  ($($n:ident),+ => move |$($p:tt),+| $body:expr) => (
-      {
-          $( let $n = $n.clone(); )+
-          move |$(clone!(@param $p),)+| $body
-      }
-  );
-}
-*/
-
-pub struct TabPanel {
-    notebook: Notebook,
-    tabs: Vec<gtk::Box>,
-}
-
-impl TabPanel {
-    fn new() -> TabPanel {
-        TabPanel {
-            notebook: gtk::Notebook::new(),
-            tabs: Vec::new(),
-        }
-    }
-
-    fn create_tab(&mut self, title: &str, widget: Widget) -> u32 {
-        let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
-        let button = gtk::Button::new();
-        let label = gtk::Label::new(Some(title));
-        let tab = gtk::Box::new(Orientation::Horizontal, 0);
-
-        button.set_relief(ReliefStyle::None);
-        button.set_focus_on_click(false);
-        button.add(&close_image);
-
-        tab.pack_start(&label, false, false, 0);
-        tab.pack_start(&button, false, false, 0);
-        tab.show_all();
-
-        let index = self.notebook.append_page(&widget, Some(&tab));
-
-
-        button.connect_clicked(clone!(@weak self.notebook as notebook => move |_| {
-            let index = notebook
-                .page_num(&widget)
-                .expect("Couldn't get page_num from notebook");
-            notebook.remove_page(Some(index));
-        }));
-
-        self.tabs.push(tab);
-
-        index
-    }
-}
-
-pub struct FileData {
-    pub display_name: String,
-    pub path: String,
-}
-pub fn save(other_text: String) {
-    fs::write("file.rs", other_text).expect("Should write");
-}
-
-pub fn build_file() -> String {
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(&["/C", "echo hello"])
-            .output()
-            .expect("failed to execute process")
-    } else {
-        Command::new("rustc")
-            .arg("file.rs")
-            .output()
-            .expect("failed to execute process")
-    };
-
-    let hello = output.stderr;
-    String::from_utf8(hello).expect("Jey")
-}
-
-pub fn format_file() -> String {
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(&["/C", "echo hello"])
-            .output()
-            .expect("failed to execute process")
-    } else {
-        Command::new("rustfmt")
-            .arg("file.rs")
-            .output()
-            .expect("failed to execute process")
-    };
-
-    let hello = output.stderr;
-    String::from_utf8(hello).expect("Jey")
-}
-
-pub fn run_file() -> String {
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(&["/C", "echo hello"])
-            .output()
-            .expect("failed to execute process")
-    } else {
-        Command::new("./file")
-            .output()
-            .expect("failed to execute process")
-    };
-
-    let hello = output.stdout;
-    String::from_utf8(hello).expect("Jey")
-}
+use raide::ui::UI;
 fn main() -> std::io::Result<()> {
-    let mut file = File::open("file.rs")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    let uiapp = gtk::Application::new(
+   // let mut file = File::open("file.rs")?;
+   // let mut contents = String::new();
+   // file.read_to_string(&mut contents)?;
+    
+   
+   let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
         gio::ApplicationFlags::FLAGS_NONE,
     )
     .expect("Application::new failed");
     uiapp.connect_activate(move |app| {
+
+        // At start no tab is open
         let mut manager = LanguageManager::new();
-        let mut buffer = Buffer::new_with_language(&manager.get_language("rust").unwrap());
+        // let mut buffer = Buffer::new_with_language(&manager.get_language("rust").unwrap());
 
         // We create the main window.
         let win = gtk::ApplicationWindow::new(app);
@@ -179,6 +62,9 @@ fn main() -> std::io::Result<()> {
         let gridbox = Box::new(Orientation::Vertical, 5);
         gridbox.add(&tool_bar);
 
+        // No text window, only notebook added
+
+        /*
         let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         text_window.set_min_content_height(500);
@@ -190,14 +76,17 @@ fn main() -> std::io::Result<()> {
         textview.set_insert_spaces_instead_of_tabs(true);
         textview.set_show_line_marks(true);
         textview.set_show_line_numbers(true);
+        */
         //textview.set_show_right_margin(true);
         // textview.set_smart_backspace(true);
         // let my_obj = textview.get_completion();
         // println!("Completion: {:?}", my_obj);
 
+        /*
         text_window.add(&textview);
         textview.set_buffer(Some(&buffer));
         let textbuffer = textview.get_buffer().unwrap();
+        */
 
         let console_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         console_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
@@ -209,18 +98,19 @@ fn main() -> std::io::Result<()> {
         outputview.set_property("cursor-visible", &false);
         let outputbuffer = outputview.get_buffer().unwrap();
 
-        textbuffer.set_text(&contents);
+       // textbuffer.set_text(&contents);
 
         let outputbuffer_clone = outputbuffer.clone();
         let textbuffer_clone = textbuffer.clone();
         build_button.connect_clicked(move |_| {
-            // Hier
+            // Query selected tab
             save_it(&textbuffer_clone);
             let my_string = build_file();
             outputbuffer.set_text(my_string.as_str());
         });
         let textbuffer_clone = textbuffer.clone();
         run_button.connect_clicked(move |_| {
+            // Query selected tab
             save_it(&textbuffer_clone);
             let my_string = run_file();
             outputbuffer_clone.set_text(my_string.as_str());
@@ -236,32 +126,6 @@ fn main() -> std::io::Result<()> {
         format_button.connect_clicked(move |_| {
             format_it(&textbuffer_clone);
         });
-
-        let mut paned = Paned::new(Orientation::Vertical);
-        // Now adding a notebook and inside the tabs with text_windows
-        //paned.add1(&text_window);
-        let mut notebook = TabPanel::new();
-
-       // let mut label = Label::new(Some(&"Text"));
-      //  let mut other_label = Label::new(Some(&"Other"));
-        let mut other_scrolled = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-        let mut my_test = Label::new(Some(&"Hello-Content"));
-        other_scrolled.add(&my_test);
-       // notebook.append_page(&text_window,Some(&label));
-       // notebook.append_page(&text_window,Some(&other_label));
-        
-        notebook.create_tab("First", text_window.upcast());
-        notebook.create_tab("Second", other_scrolled.upcast());
-
-        notebook.notebook.popup_enable();
-        notebook.notebook.set_scrollable(true);
-        notebook.notebook.set_show_border(true);
-
-        //notebook.connect_switch_page(move || {
-
-      //  });
-        paned.add1(&notebook.notebook);
-        paned.add2(&console_window);
 
         // Store the shown filename and the full path
         let treestore = TreeStore::new(&[String::static_type(), String::static_type()]);
@@ -293,6 +157,7 @@ fn main() -> std::io::Result<()> {
             ],
         );
 
+        // TODO Move to user defined open directory
         let mut paths = fs::read_dir(".")
             .unwrap()
             .map(|res| res.map(|e| e.path()))
@@ -306,61 +171,27 @@ fn main() -> std::io::Result<()> {
         for path in paths {
             add_node(&treestore, &path, None);
         }
+
+        // paths added, now generate tabs
+
         let textbuffer_clone = textbuffer.clone();
+       
+
+        let mut paned = Paned::new(Orientation::Vertical);
         let mut tree_selection = treeview.get_selection();
-        tree_selection.connect_changed(move |tree_selection| {
-            let (my_model, my_iter) = tree_selection.get_selected().unwrap();
-            let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
-            println!("{}", path_string);
-            // Exchange view
-            let my_path = Path::new(path_string.as_str());
-            if my_path.exists() {
-                let mut my_file = File::open(my_path).unwrap();
-                let mut contents = String::new();
-                my_file.read_to_string(&mut contents).unwrap();
-                // Reset language based on file extension
-                let mut extension = get_extension_from_filename(path_string.as_str());
-                println!("{:?}", extension);
-                match extension {
-                    None => {
-                        // Set to markdown for displaying text
-                        extension = Some("md");
-                    }
-                    Some(ext) => {
-                        let lookup = get_by_left(ext);
-                        match lookup {
-                            // Non programming language extension
-                            None => {
-                                extension = Some("md");
-                            }
-                            // matched lang string
-                            Some(lang) => {
-                                
-                                /*
-                                // Only Buffer instead of TextBuffer has the language setting method
-                                let buffer_hack = Buffer::new_with_language(&manager.get_language(lang).unwrap());
-                                let text_iter_start = textbuffer_clone.get_start_iter();
-                                let text_iter_end = textbuffer_clone.get_end_iter();
-                                let the_text = textbuffer_clone.get_text(&text_iter_start, &text_iter_end, true);
-                                buffer_hack.set_text(the_text.unwrap().as_str());
-                                // Now replacing the views buffer
-                                textview.set_buffer(Some(&buffer_hack));
-                               
-                               */
-                            }
-                        }
-                    }
-                }
-                
-                // Needs extension manager
-                textbuffer_clone.set_text(&contents);
+        
+        let mut notebook = Notebook::new();
+        let mut other_scrolled = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+        let mut my_test = Label::new(Some(&"Hello-Content"));
+        other_scrolled.add(&my_test);
 
-                //println!("Contents: {}", contents);    
-            }
-            
+        notebook.popup_enable();
+        notebook.set_scrollable(true);
+        notebook.set_show_border(true);
 
-            // println!("File exists? {}", Path::new(path_string.as_str()).exists());
-        });
+
+     //   let (my_model, my_iter) = tree_selection.get_selected().unwrap();
+        
 
         let mut second_paned = Paned::new(Orientation::Horizontal);
 
@@ -368,6 +199,9 @@ fn main() -> std::io::Result<()> {
 
         project_pane.add(&treeview);
         second_paned.add1(&project_pane);
+        let my_ui = ui::UI{};
+        paned.add1(&notebook);
+        paned.add2(&console_window);
         second_paned.add2(&paned);
 
         gridbox.add(&second_paned);
@@ -454,4 +288,158 @@ pub fn format_it(textbuffer: &TextBuffer) -> std::io::Result<()> {
     file.read_to_string(&mut contents)?;
     textbuffer.set_text(&contents);
     Ok(())
+}
+ 
+pub fn create_tab(notebook: &Notebook , tabs: &mut Vec<gtk::Box>, title: &str, widget: Widget) -> u32 {
+    let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
+    let button = gtk::Button::new();
+    let label = gtk::Label::new(Some(title));
+    let tab = gtk::Box::new(Orientation::Horizontal, 0);
+
+    button.set_relief(ReliefStyle::None);
+    button.set_focus_on_click(false);
+    button.add(&close_image);
+
+    tab.pack_start(&label, false, false, 0);
+    tab.pack_start(&button, false, false, 0);
+    tab.show_all();
+
+    let index = notebook.append_page(&widget, Some(&tab));
+
+
+    button.connect_clicked(clone!(@weak notebook => move |_| {
+        let index = notebook
+            .page_num(&widget)
+            .expect("Couldn't get page_num from notebook");
+        notebook.remove_page(Some(index));
+    }));
+
+    tabs.push(tab);
+
+    index
+}
+
+pub fn click_listener(tree_selection: &TreeSelection, manager: &LanguageManager, notebook: Notebook, tabs: &mut Vec<gtk::Box>) {
+    let mut tabs = tabs.clone();
+    tree_selection.connect_changed(clone!(@weak tree_selection, @weak manager  => move |_| {
+        let (my_model, my_iter) = tree_selection.get_selected().unwrap();
+        let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
+        let last_string = my_model.get_value(&my_iter, 0).get::<String>().unwrap().unwrap();
+        println!("{}", path_string);
+       
+        let my_path = Path::new(path_string.as_str());
+        if my_path.exists() {
+            let mut my_file = File::open(my_path).unwrap();
+            let mut contents = String::new();
+            my_file.read_to_string(&mut contents).unwrap();
+            
+            let mut extension = get_extension_from_filename(path_string.as_str());
+            println!("{:?}", extension);
+
+            let mut scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+            //let mut my_buffer = Buffer::new_with_language(&manager.get_language("md").unwrap());
+
+            //my_buffer.set_text(contents.as_str());
+            
+            let mut my_view = View::new();
+            
+
+            match extension {
+                None => {
+                    // Set to markdown for displaying text
+                    extension = Some("md");
+                    let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                    my_view.set_buffer(Some(&my_buffer));
+                    scrolled_window.add(&my_view);
+                    let mut tabs = tabs.clone();
+                    create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+
+                }
+                Some(ext) => {
+                    let lookup = get_by_left(ext);
+                    match lookup {
+                        // Non programming language extension
+                        None => {
+                            extension = Some("md");
+                            let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                            my_view.set_buffer(Some(&my_buffer));
+                            scrolled_window.add(&my_view);
+                            let mut tabs = tabs.clone();
+                            create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                        }
+                        // matched lang string
+                        Some(lang) => {
+                            
+                            let mut my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());    
+                            my_view.set_buffer(Some(&my_buffer));
+                            scrolled_window.add(&my_view);
+                            let mut tabs = tabs.clone();
+                            create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                        }
+                    }
+                }
+            }    
+        }
+        
+
+        // println!("File exists? {}", Path::new(path_string.as_str()).exists());
+    }));
+}
+
+// Save file with selected tab -> file relation
+pub fn save(other_text: String) {
+fs::write("file.rs", other_text).expect("Should write");
+}
+
+// Build file depending on selected tab -> project relation
+pub fn build_file() -> String {
+let output = if cfg!(target_os = "windows") {
+    Command::new("cmd")
+        .args(&["/C", "echo hello"])
+        .output()
+        .expect("failed to execute process")
+} else {
+    Command::new("rustc")
+        .arg("file.rs")
+        .output()
+        .expect("failed to execute process")
+};
+
+let hello = output.stderr;
+String::from_utf8(hello).expect("Jey")
+}
+
+// Format file depending on selected tab -> file relation
+pub fn format_file() -> String {
+let output = if cfg!(target_os = "windows") {
+    Command::new("cmd")
+        .args(&["/C", "echo hello"])
+        .output()
+        .expect("failed to execute process")
+} else {
+    Command::new("rustfmt")
+        .arg("file.rs")
+        .output()
+        .expect("failed to execute process")
+};
+
+let hello = output.stderr;
+String::from_utf8(hello).expect("Jey")
+}
+
+// Run project depending on selected tab -> file relation
+pub fn run_file() -> String {
+let output = if cfg!(target_os = "windows") {
+    Command::new("cmd")
+        .args(&["/C", "echo hello"])
+        .output()
+        .expect("failed to execute process")
+} else {
+    Command::new("./file")
+        .output()
+        .expect("failed to execute process")
+};
+
+let hello = output.stdout;
+String::from_utf8(hello).expect("Jey")
 }
