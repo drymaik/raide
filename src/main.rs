@@ -224,18 +224,32 @@ fn main() -> std::io::Result<()> {
                 println!("{:?}", extension);
     
                 let mut scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+                scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+                scrolled_window.set_min_content_height(500);
                 //let mut my_buffer = Buffer::new_with_language(&manager.get_language("md").unwrap());
     
                 //my_buffer.set_text(contents.as_str());
                 
                 let mut my_view = View::new();
+                my_view.set_highlight_current_line(true);
+                my_view.set_auto_indent(true);
+                my_view.set_indent_on_tab(true);
+                my_view.set_insert_spaces_instead_of_tabs(true);
+                my_view.set_show_line_marks(true);
+                my_view.set_show_line_numbers(true);
+
+                let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+        text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+        text_window.set_min_content_height(500);
+        
                 
     
                 match extension {
                     None => {
                         // Set to markdown for displaying text
                         extension = Some("md");
-                        let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                        let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
+                        my_buffer.set_text(contents.as_str());    
                         my_view.set_buffer(Some(&my_buffer));
                         scrolled_window.add(&my_view);
                         let mut tabs = tabs.clone();
@@ -249,6 +263,7 @@ fn main() -> std::io::Result<()> {
                             None => {
                                 extension = Some("md");
                                 let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
+                                my_buffer.set_text(contents.as_str());
                                 // TODO my_buffer.set_text() from file content if file not loaded    
                                 my_view.set_buffer(Some(&my_buffer));
                                 scrolled_window.add(&my_view);
@@ -258,7 +273,8 @@ fn main() -> std::io::Result<()> {
                             // matched lang string
                             Some(lang) => {
                                 
-                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());    
+                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());
+                                my_buffer.set_text(contents.as_str());    
                                 my_view.set_buffer(Some(&my_buffer));
                                 scrolled_window.add(&my_view);
                                 let mut tabs = tabs.clone();
@@ -287,6 +303,13 @@ fn main() -> std::io::Result<()> {
     uiapp.run(&env::args().collect::<Vec<_>>());
 
     Ok(())
+}
+
+pub fn load_file(path: &Path) -> String {
+    let mut file = File::open(path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    contents
 }
 
 // https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
@@ -407,6 +430,8 @@ pub fn click_listener(tree_selection: &TreeSelection, manager: &LanguageManager,
        
         let my_path = Path::new(path_string.as_str());
         if my_path.exists() {
+
+            let mut contents = load_file(&my_path);
             let mut my_file = File::open(my_path).unwrap();
             let mut contents = String::new();
             my_file.read_to_string(&mut contents).unwrap();
@@ -426,7 +451,10 @@ pub fn click_listener(tree_selection: &TreeSelection, manager: &LanguageManager,
                 None => {
                     // Set to markdown for displaying text
                     extension = Some("md");
-                    let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                    let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
+                    
+                    // set text from file
+                    my_buffer.set_text(&contents);
                     my_view.set_buffer(Some(&my_buffer));
                     scrolled_window.add(&my_view);
                     let mut tabs = tabs.clone();
