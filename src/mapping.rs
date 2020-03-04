@@ -6,6 +6,21 @@ use std::collections::HashMap;
 pub static LANG_TYPES: &[(&str, &str)] = &[
     ("rs", "rust"),
     ("java", "java"),
+    ("r", "r"),
+    ("c","c"),
+    ("cpp","cpp"),
+    ("go","go"),
+    ("html","html"),
+    ("json","json"),
+    ("jl","julia"),
+    ("tex","latex"),
+    ("lua","lua"),
+    ("m","matlab"),
+    ("php","php"),
+    ("py","python"),
+    ("rb","ruby"),
+    ("toml","toml"),
+    ("xml","xml"),
 
 ];
 
