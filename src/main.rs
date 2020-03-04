@@ -248,7 +248,8 @@ fn main() -> std::io::Result<()> {
                             // Non programming language extension
                             None => {
                                 extension = Some("md");
-                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());    
+                                let mut my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
+                                // TODO my_buffer.set_text() from file content if file not loaded    
                                 my_view.set_buffer(Some(&my_buffer));
                                 scrolled_window.add(&my_view);
                                 let mut tabs = tabs.clone();
@@ -390,6 +391,7 @@ pub fn create_tab(notebook: &Notebook , tabs: &mut Vec<gtk::Box>, title: &str, w
     }));
 
     tabs.push(tab);
+    notebook.show_all();
 
     index
 }
