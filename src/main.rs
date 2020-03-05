@@ -5,7 +5,7 @@ use gtk::{
     Adjustment, Button, CellRendererText, ContainerExt, IconSize, Label, LabelExt, ListStore, Menu,
     MenuBar, MenuItem, Notebook, NotebookExt, Orientation, Paned, ReliefStyle, ScrolledWindow,ScrolledWindowExt,
     TextBuffer, TextIter, TextView, ToolButton, Toolbar, TreeIter, TreeSelection, TreeSelectionExt,
-    TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,EventBox, EventBoxExt,
+    TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,WidgetExt, EventBox, EventBoxExt,BoxExt
 };
 use raide::mapping::{get_by_left, get_by_right};
 use raide::ui::UI;
@@ -211,7 +211,7 @@ fn main() -> std::io::Result<()> {
                 }
                 Some(value) => {
                    // println!("{:?}",notebook.get_tab_label_text(&my_ui.deref().borrow_mut().tabs[0]).unwrap());
-                    let label_text = notebook.get_tab_label_text(&value);
+                    let label_text = notebook.get_menu_label_text(&value);
                     let window = value.downcast::<ScrolledWindow>().unwrap();
                     let inside_view = window.get_child().unwrap().downcast::<View>().unwrap();
                     let inside_buffer = inside_view.get_buffer().unwrap();
@@ -221,10 +221,15 @@ fn main() -> std::io::Result<()> {
                     let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
                     let plain_text = the_text.unwrap().to_string();
                     
+                    let wrapped = label_text.unwrap();
+                    println!("Wrapper: {}", wrapped);
+                   // let childs = wrapped.downcast::<gtk::Box>();
+                  //  let mys = childs.unwrap().get_center_widget();
+                  //  println!("This: {:?}", mys);
                  //   let label_text = notebook.get_menu_label_text(&window);
-                    println!("Label is: {:?}", label_text);
+                  //  println!("Label is: {:?}", label);
                     // Write to
-                    fs::write("some.rs", plain_text).expect("Should write");
+                    fs::write(Path::new(&wrapped), plain_text).expect("Should write");
                 }
             }
             
@@ -281,7 +286,7 @@ fn main() -> std::io::Result<()> {
                         my_view.set_buffer(Some(&my_buffer));
                         scrolled_window.add(&my_view);
                         let mut tabs = tabs.clone();
-                        create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                        create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
     
                     }
                     Some(ext) => {
@@ -296,7 +301,7 @@ fn main() -> std::io::Result<()> {
                                 my_view.set_buffer(Some(&my_buffer));
                                 scrolled_window.add(&my_view);
                                 let mut tabs = tabs.clone();
-                                create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                                create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
                             }
                             // matched lang string
                             Some(lang) => {
@@ -306,7 +311,7 @@ fn main() -> std::io::Result<()> {
                                 my_view.set_buffer(Some(&my_buffer));
                                 scrolled_window.add(&my_view);
                                 let mut tabs = tabs.clone();
-                                create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                                create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
                             }
                         }
                     }
@@ -418,11 +423,13 @@ pub fn create_tab(
     notebook: &Notebook,
     tabs: &mut Vec<gtk::Box>,
     title: &str,
+    my_path: &str,
     widget: Widget,
 ) -> u32 {
     let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
     let button = gtk::Button::new();
     let label = gtk::Label::new(Some(title));
+  //  let info = gtk::Label::new(Some(my_path));
     let event_box = EventBox::new();
     // event_box.set_above_child;
     let tab = gtk::Box::new(Orientation::Horizontal, 0);
@@ -430,12 +437,16 @@ pub fn create_tab(
     button.set_relief(ReliefStyle::None);
     button.set_focus_on_click(false);
     button.add(&close_image);
+    
+    
 
     tab.pack_start(&label, false, false, 0);
     tab.pack_start(&button, false, false, 0);
+   // tab.pack_start(&info, false, false, 0);
     tab.show_all();
 
     let index = notebook.append_page(&widget, Some(&tab));
+    notebook.set_menu_label_text(&widget,my_path);
 
     button.connect_clicked(clone!(@weak notebook => move |_| {
         let index = notebook
@@ -453,6 +464,8 @@ pub fn create_tab(
 */
     tabs.push(tab);
     notebook.show_all();
+  //  info.hide();
+  //  notebook.set_tab_label_text("");
   //  notebook.set_focus_child(Some(&widget.clone()));
 
     index
@@ -502,7 +515,7 @@ pub fn click_listener(
                     my_view.set_buffer(Some(&my_buffer));
                     scrolled_window.add(&my_view);
                     let mut tabs = tabs.clone();
-                    create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                    create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
 
                 }
                 Some(ext) => {
@@ -515,7 +528,7 @@ pub fn click_listener(
                             my_view.set_buffer(Some(&my_buffer));
                             scrolled_window.add(&my_view);
                             let mut tabs = tabs.clone();
-                            create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                            create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
                         }
                         // matched lang string
                         Some(lang) => {
@@ -524,7 +537,7 @@ pub fn click_listener(
                             my_view.set_buffer(Some(&my_buffer));
                             scrolled_window.add(&my_view);
                             let mut tabs = tabs.clone();
-                            create_tab(&notebook, &mut tabs, last_string.as_str(), scrolled_window.upcast());
+                            create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
                         }
                     }
                 }
