@@ -117,12 +117,12 @@ let my_string = &run_cmd.command;
 }
 // Interpret {file} attribute as given tab
 // Returns if it should be registered later or now
-pub fn template_command(run_cmd: &mut Runcommand, file_tab: &String) -> bool {
+pub fn template_command(run_cmd: &mut Runcommand, file_tab: &str) {
+println!("Templating: ");
     let my_string = &run_cmd.command;
     let splitted : Vec<&str> = my_string.split(" ").collect();
     
     if splitted.is_empty() {
-        return false;
     }
     // Now fill the commands
     else {
@@ -137,15 +137,15 @@ pub fn template_command(run_cmd: &mut Runcommand, file_tab: &String) -> bool {
         if value == &"{file}".to_string() {
             // Substitute with current active tab
             
-            val = &tab_clone.as_str();
-            register = true;
+            val = tab_clone;
+          //  register = true;
         }
-        copy_string.push_str(val);
+        copy_string.push_str(&format!("{} ", val));
     }
-    
+    copy_string = copy_string.trim_end().to_string();
     // Now overwrite the Command
     run_cmd.command = copy_string;
-    return register;
+   // return register;
 }
 }
 /*
@@ -321,38 +321,7 @@ fs::write(&fp, file_string).expect("Should write");
         let outputbuffer = outputview.get_buffer().unwrap();
 
         
-        for mut i in my_commands {
-        let register = has_template(&i);
-        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
-        
-        
-        if !register {
-        
-        // let cmd = real_command();
-        
-        // Check if command is valid
-        let outputbuffer = outputbuffer.clone();
-        let outputview = outputview.clone();
-        let outlang = manager.get_language("rust").unwrap();
-        let fake_buffer = Buffer::new_with_language(&outlang.clone());
-        custom_button.connect_clicked(move |_| {
-            //let notebook = &my_ui.deref().borrow_mut().notebook;
-          //  let tabs = &my_ui.deref().borrow_mut().tabs;
-            // let real_command = generate_command(&i).unwrap();
-            let output = execute_command(i.clone());
-            if !output.is_empty() {
-                
-                fake_buffer.set_text(&output);
-                outputview.set_buffer(Some(&fake_buffer));
-                // outputbuffer.set_text(&output);
-            }
-            println!("Output is: {}", output);
-        });
-        }
-        
-        
-        tool_bar.add(&custom_button);
-    }
+       
        // textbuffer.set_text(&contents);
 
        /*
@@ -456,6 +425,109 @@ fs::write(&fp, file_string).expect("Should write");
         {
             let my_ui = my_ui.clone();
         // Fetch the text buffer from the view
+       //  let mut last_i : Runcommand = my_commands[0].clone();
+         for mut i in my_commands {
+         
+   //     last_i = i.clone();
+        let register = has_template(&i);
+        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+        
+        /*
+        if register {
+         let strings: Vec<&str> = i.command.split(" ").collect();
+            for my_val in strings {
+                if my_val == "{file}" {
+           
+                }
+            }
+        
+        }
+        */
+        
+        
+        // Check if command is valid
+        let outputbuffer = outputbuffer.clone();
+        let outputview = outputview.clone();
+        let outlang = manager.get_language("rust").unwrap();
+        let fake_buffer = Buffer::new_with_language(&outlang.clone());
+        
+       {
+        let my_ui = my_ui.clone();
+      //  let mut last_i = last_i.clone();
+     //   let mut last_i = i.clone();
+        custom_button.connect_clicked(move |_|  {
+        
+        // Now check, if a tab is selected 
+        
+       // let mut last_i = last_i.clone();
+       if register {
+         let notebook = &my_ui.deref().borrow_mut().notebook;
+          //  let tabs = &my_ui.deref().borrow_mut().tabs;
+            
+            let content = notebook.get_focus_child();
+            let mut to_file_string :Option<&str> = None;
+            match content {
+                None => {
+                    println!("Tab is not selected");
+                    // continue;
+                }
+                Some(value) => {
+                   // println!("{:?}",notebook.get_tab_label_text(&my_ui.deref().borrow_mut().tabs[0]).unwrap());
+                    let label_text = notebook.get_menu_label_text(&value);
+                    
+                    
+                    let window = value.downcast::<ScrolledWindow>().unwrap();
+                    let inside_view = window.get_child().unwrap().downcast::<View>().unwrap();
+                    let inside_buffer = inside_view.get_buffer().unwrap();
+
+                    let text_iter_start = inside_buffer.get_start_iter();
+                    let text_iter_end = inside_buffer.get_end_iter();
+                    let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
+                    let plain_text = the_text.unwrap().to_string();
+                    
+                    let wrapped = label_text.unwrap();
+                    println!("Before");
+                    println!("Wrapper: {}", wrapped);
+                    to_file_string = Some(&wrapped);
+                   // Save
+                    fs::write(Path::new(&wrapped), plain_text).expect("Should write");
+                    let mut clone_i = i.clone();
+                     template_command(&mut clone_i,&Path::new(&wrapped).to_str().unwrap());
+                     println!("I: {:?}",clone_i);
+                     //last_i = clone_i;
+                     
+                     let output = execute_command(clone_i.clone());
+            if !output.is_empty() {
+                
+                fake_buffer.set_text(&output);
+                outputview.set_buffer(Some(&fake_buffer));
+                // outputbuffer.set_text(&output);
+            }
+            println!("Output is: {}", output);
+                     }
+                     
+                     
+                     }
+                     
+                     
+                     
+                     
+                     }
+          
+            let output = execute_command(i.clone());
+            if !output.is_empty() {
+                
+                fake_buffer.set_text(&output);
+                outputview.set_buffer(Some(&fake_buffer));
+                // outputbuffer.set_text(&output);
+            }
+            println!("Output is: {}", output);
+        });
+   
+        }
+        tool_bar.add(&custom_button);
+    }
+        
         save_button.connect_clicked(move |_| {
             let notebook = &my_ui.deref().borrow_mut().notebook;
           //  let tabs = &my_ui.deref().borrow_mut().tabs;
