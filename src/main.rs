@@ -67,7 +67,10 @@ pub fn execute_command (the_cmd: Runcommand) -> String {
     my_cmd.output()
             .expect("failed to execute process")
 };
-let hello = output.stderr;
+let mut hello = output.stderr;
+if hello.is_empty() {
+    hello = output.stdout; 
+}
 String::from_utf8(hello).expect("Jey")
 }
 
@@ -215,7 +218,7 @@ let build_command = Runcommand {
 let run_command = Runcommand {
     name: "run".to_string(),
     has_button: true,
-    command: "cargo run".to_string(),
+    command: "./file".to_string(),
     key_binding: None,
 };
 
@@ -311,7 +314,7 @@ fs::write(&fp, file_string).expect("Should write");
         console_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         console_window.set_min_content_height(500);
         // console_window.set_max_content_height(500);
-        let outputview = TextView::new();
+        let outputview = View::new();
         console_window.add(&outputview);
         outputview.set_property("editable", &false);
         outputview.set_property("cursor-visible", &false);
@@ -329,13 +332,19 @@ fs::write(&fp, file_string).expect("Should write");
         
         // Check if command is valid
         let outputbuffer = outputbuffer.clone();
+        let outputview = outputview.clone();
+        let outlang = manager.get_language("rust").unwrap();
+        let fake_buffer = Buffer::new_with_language(&outlang.clone());
         custom_button.connect_clicked(move |_| {
             //let notebook = &my_ui.deref().borrow_mut().notebook;
           //  let tabs = &my_ui.deref().borrow_mut().tabs;
             // let real_command = generate_command(&i).unwrap();
             let output = execute_command(i.clone());
             if !output.is_empty() {
-                outputbuffer.set_text(&output);
+                
+                fake_buffer.set_text(&output);
+                outputview.set_buffer(Some(&fake_buffer));
+                // outputbuffer.set_text(&output);
             }
             println!("Output is: {}", output);
         });
