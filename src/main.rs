@@ -25,11 +25,187 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use ron;
+use ron::ser::PrettyConfig;
+pub fn get_pretty() -> PrettyConfig {
+    PrettyConfig {
+        depth_limit: 2,
+        new_line: "\n".to_string(),
+        indentor: "    ".to_string(),
+        separate_tuple_members: true,
+        enumerate_arrays: true,
+    }
+}
+
+pub fn execute_command (my_cmd: &mut Command) -> String {
+  let output = if cfg!(target_os = "windows") {
+    my_cmd.output()
+            .expect("failed to execute process")
+} else {
+    my_cmd.output()
+            .expect("failed to execute process")
+};
+let hello = output.stderr;
+String::from_utf8(hello).expect("Jey")
+}
+
+pub fn generate_command(run_cmd: &mut Runcommand) -> Option<Command> {
+    let my_string = &run_cmd.command;
+    let splitted : Vec<&str> = my_string.split(" ").collect();
+    
+    if splitted.is_empty() {
+        None
+    }
+    // Now fill the commands
+    else {
+        let len = splitted.len();
+    let mut my_command = Command::new(splitted[0]);
+
+    for (value) in splitted {
+        my_command.arg(value);
+        
+        
+    }
+    Some(my_command)
+    }
+    
+    
+            
+}
+/*
+pub fn build_file () -> String {
+  let output = if cfg!(target_os = "windows") {
+    Command::new("cmd")
+            .args(&["/C", "echo hello"])
+            .output()
+            .expect("failed to execute process")
+} else {
+    Command::new("rustc")
+            .arg("file.rs")
+            .output()
+            .expect("failed to execute process")
+};
+
+let hello = output.stderr;
+String::from_utf8(hello).expect("Jey")
+}
+*/
+
+/*
+pub fn format_file () -> String {
+  let output = if cfg!(target_os = "windows") {
+    Command::new("cmd")
+            .args(&["/C", "echo hello"])
+            .output()
+            .expect("failed to execute process")
+} else {
+    Command::new("rustfmt")
+            .arg("file.rs")
+            .output()
+            .expect("failed to execute process")
+};
+
+let hello = output.stderr;
+String::from_utf8(hello).expect("Jey")
+}
+*/
+//use serde_derive::{Deserialize,Serialize};
+pub fn load_workspace_file() {
+    
+}
+
+/*
+{
+  "name": "Kate"
+, "files": [ { "directory": "./", "filters": ["*.rs", "*.toml", "*.json", "*.ron" ], "recursive": 1 } ]
+, "build": {
+    "directory": "./"
+  , "build": "cargo build"
+  , "clean": "cargo run"
+  , "install": "cargo run --release"
+  }
+, "index": true
+}
+
+*/
+/// The workspace config
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Workspace {
+    pub name: String,
+    pub exclude_files: Vec<String>,
+    pub commands: Vec<Runcommand>
+}
+
+/// Commands
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Runcommand {
+    pub name: String,
+    pub has_button: bool,
+    pub command: String,
+    pub key_binding: Option<String>,
+}
+
 fn main() -> std::io::Result<()> {
+
+let build_command = Runcommand {
+    name: "build".to_string(),
+    has_button: true,
+    command: "cargo build".to_string(),
+    key_binding: None,
+};
+
+let run_command = Runcommand {
+    name: "run".to_string(),
+    has_button: true,
+    command: "cargo run".to_string(),
+    key_binding: None,
+};
+
+let format_command = Runcommand {
+    name: "format".to_string(),
+    has_button: true,
+    command: "rustfmt {file}".to_string(),
+    key_binding: None,
+};
+
+let my_ws = Workspace {
+    name: "raide".to_string(),
+    exclude_files: vec![],
+    commands: vec![build_command.clone(), run_command.clone(), format_command.clone()],
+};
+let f_string = my_ws.name.clone() + ".ron";
+
+let ws_there = std::path::Path::new(&f_string).exists();
+// Do nothing
+if ws_there {
+
+}
+else {
+
+//let f_string = format!("{}", (my_ws.name.clone() + ".ron"));
+let fp = Path::new(&f_string);
+let mut file = File::create(&fp);
+
+let pretty = get_pretty();
+
+    let mut file_string = String::new();
+    file_string.push_str(
+        ron::ser::to_string_pretty(&my_ws, pretty.clone())
+            .expect("Serialization failed")
+            .as_mut_str(),
+    );
+
+fs::write(&fp, file_string).expect("Should write");
+
+}
+
+// Create now the buttons
+
     // let mut file = File::open("file.rs")?;
     // let mut contents = String::new();
     // file.read_to_string(&mut contents)?;
-    pub static SAVE_FILE: &str = "./new.txt";
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
         gio::ApplicationFlags::FLAGS_NONE,
@@ -37,6 +213,24 @@ fn main() -> std::io::Result<()> {
     .expect("Application::new failed");
     uiapp.connect_activate(move |app| {
 
+    let mut ws_file = File::open(Path::new(&f_string)).unwrap();
+    
+    let mut ws_contents = String::new();
+    ws_file.read_to_string(&mut ws_contents).unwrap();
+    let open_content: Workspace = ron::de::from_str(&ws_contents).unwrap();
+    
+    
+    let my_commands = open_content.commands;
+    let tool_bar = Toolbar::new();
+        let save_button = ToolButton::new::<Widget>(None, Some("Save"));
+        tool_bar.insert(&save_button, 0);
+    for i in my_commands {
+        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+        tool_bar.add(&custom_button);
+    }
+    
+    
+    //planning_tree = ron::de::from_str(&my_message.content).unwrap();
         // At start no tab is open
         let mut manager = LanguageManager::new();
         // let mut buffer = Buffer::new_with_language(&manager.get_language("rust").unwrap());
@@ -47,45 +241,18 @@ fn main() -> std::io::Result<()> {
         win.set_default_size(1024, 768);
         win.set_title("Raide");
         
-        let tool_bar = Toolbar::new();
-        let save_button = ToolButton::new::<Widget>(None, Some("Save"));
+        
        // let build_button = ToolButton::new::<Widget>(None, Some("Build"));
        // let run_button = ToolButton::new::<Widget>(None, Some("Run"));
       //  let format_button = ToolButton::new::<Widget>(None, Some("Format"));
 
-        tool_bar.insert(&save_button, 0);
+        
        // tool_bar.insert(&build_button, 1);
        // tool_bar.insert(&run_button, 2);
        // tool_bar.insert(&format_button, 3);
 
         let gridbox = gtk::Box::new(Orientation::Vertical, 5);
         gridbox.add(&tool_bar);
-
-        // No text window, only notebook added
-
-        /*
-        let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-        text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-        text_window.set_min_content_height(500);
-        //  text_window.set_max_content_height(500);
-        let textview = View::new();
-        textview.set_highlight_current_line(true);
-        textview.set_auto_indent(true);
-        textview.set_indent_on_tab(true);
-        textview.set_insert_spaces_instead_of_tabs(true);
-        textview.set_show_line_marks(true);
-        textview.set_show_line_numbers(true);
-        */
-        //textview.set_show_right_margin(true);
-        // textview.set_smart_backspace(true);
-        // let my_obj = textview.get_completion();
-        // println!("Completion: {:?}", my_obj);
-
-        /*
-        text_window.add(&textview);
-        textview.set_buffer(Some(&buffer));
-        let textbuffer = textview.get_buffer().unwrap();
-        */
 
         let console_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         console_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);

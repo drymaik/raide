@@ -22,6 +22,7 @@ pub static LANG_TYPES: &[(&str, &str)] = &[
     ("toml","toml"),
     ("xml","xml"),
     ("md","markdown"),
+    ("ron","markdown"),
 
 ];
 
