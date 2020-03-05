@@ -280,28 +280,7 @@ fs::write(&fp, file_string).expect("Should write");
     let tool_bar = Toolbar::new();
         let save_button = ToolButton::new::<Widget>(None, Some("Save"));
         tool_bar.insert(&save_button, 0);
-    for mut i in my_commands {
-        let register = has_template(&i);
-        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
-        
-        
-        if !register {
-        
-        // let cmd = real_command();
-        
-        // Check if command is valid
-        custom_button.connect_clicked(move |_| {
-            //let notebook = &my_ui.deref().borrow_mut().notebook;
-          //  let tabs = &my_ui.deref().borrow_mut().tabs;
-            // let real_command = generate_command(&i).unwrap();
-            let output = execute_command(i.clone());
-            println!("Output is: {}", output);
-        });
-        }
-        
-        
-        tool_bar.add(&custom_button);
-    }
+    
     
     
     //planning_tree = ron::de::from_str(&my_message.content).unwrap();
@@ -338,6 +317,33 @@ fs::write(&fp, file_string).expect("Should write");
         outputview.set_property("cursor-visible", &false);
         let outputbuffer = outputview.get_buffer().unwrap();
 
+        
+        for mut i in my_commands {
+        let register = has_template(&i);
+        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+        
+        
+        if !register {
+        
+        // let cmd = real_command();
+        
+        // Check if command is valid
+        let outputbuffer = outputbuffer.clone();
+        custom_button.connect_clicked(move |_| {
+            //let notebook = &my_ui.deref().borrow_mut().notebook;
+          //  let tabs = &my_ui.deref().borrow_mut().tabs;
+            // let real_command = generate_command(&i).unwrap();
+            let output = execute_command(i.clone());
+            if !output.is_empty() {
+                outputbuffer.set_text(&output);
+            }
+            println!("Output is: {}", output);
+        });
+        }
+        
+        
+        tool_bar.add(&custom_button);
+    }
        // textbuffer.set_text(&contents);
 
        /*
