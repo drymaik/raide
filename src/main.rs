@@ -29,6 +29,25 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use ron;
 use ron::ser::PrettyConfig;
+
+/// The workspace config
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Workspace {
+    pub name: String,
+    pub exclude_files: Vec<String>,
+    pub commands: Vec<Runcommand>
+}
+
+/// Commands
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Runcommand {
+    pub name: String,
+    pub has_button: bool,
+    pub command: String,
+    pub key_binding: Option<String>,
+}
+
+
 pub fn get_pretty() -> PrettyConfig {
     PrettyConfig {
         depth_limit: 2,
@@ -39,7 +58,8 @@ pub fn get_pretty() -> PrettyConfig {
     }
 }
 
-pub fn execute_command (my_cmd: &mut Command) -> String {
+pub fn execute_command (the_cmd: Runcommand) -> String {
+  let mut my_cmd = generate_command(&the_cmd).unwrap();
   let output = if cfg!(target_os = "windows") {
     my_cmd.output()
             .expect("failed to execute process")
@@ -51,7 +71,7 @@ let hello = output.stderr;
 String::from_utf8(hello).expect("Jey")
 }
 
-pub fn generate_command(run_cmd: &mut Runcommand) -> Option<Command> {
+pub fn generate_command(run_cmd: &Runcommand) -> Option<Command> {
     let my_string = &run_cmd.command;
     let splitted : Vec<&str> = my_string.split(" ").collect();
     
@@ -60,19 +80,70 @@ pub fn generate_command(run_cmd: &mut Runcommand) -> Option<Command> {
     }
     // Now fill the commands
     else {
-        let len = splitted.len();
     let mut my_command = Command::new(splitted[0]);
 
-    for (value) in splitted {
+    for (key,value) in splitted.iter().enumerate() {
+        if key > 0 {
         my_command.arg(value);
+        }
         
         
     }
     Some(my_command)
     }
+}
+
+pub fn has_template(run_cmd: &Runcommand) -> bool {
+let my_string = &run_cmd.command;
+    let splitted : Vec<&str> = my_string.split(" ").collect();
     
-    
+    if splitted.is_empty() {
+        return false;
+    }
+    // Now fill the commands
+    else {
+   // let mut register = false;
+    for (key, mut value) in splitted.iter().enumerate() {
+        if value == &"{file}".to_string() {
+            return true;
             
+            }
+    }
+    return false;
+}
+}
+// Interpret {file} attribute as given tab
+// Returns if it should be registered later or now
+pub fn template_command(run_cmd: &mut Runcommand, file_tab: &String) -> bool {
+    let my_string = &run_cmd.command;
+    let splitted : Vec<&str> = my_string.split(" ").collect();
+    
+    if splitted.is_empty() {
+        return false;
+    }
+    // Now fill the commands
+    else {
+        let len = splitted.len();
+    let mut my_command = Command::new(splitted[0]);
+
+    let mut copy_string = String::new();
+    let mut register = false;
+    for (key, mut value) in splitted.iter().enumerate() {
+        let tab_clone = file_tab.clone();
+        let mut val = value.clone();
+        if value == &"{file}".to_string() {
+            // Substitute with current active tab
+            
+            val = &tab_clone.as_str();
+            register = true;
+        }
+        copy_string.push_str(val);
+    }
+    
+    // Now overwrite the Command
+    run_cmd.command = copy_string;
+    return register;
+}
 }
 /*
 pub fn build_file () -> String {
@@ -130,22 +201,7 @@ pub fn load_workspace_file() {
 }
 
 */
-/// The workspace config
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Workspace {
-    pub name: String,
-    pub exclude_files: Vec<String>,
-    pub commands: Vec<Runcommand>
-}
 
-/// Commands
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Runcommand {
-    pub name: String,
-    pub has_button: bool,
-    pub command: String,
-    pub key_binding: Option<String>,
-}
 
 fn main() -> std::io::Result<()> {
 
@@ -224,8 +280,26 @@ fs::write(&fp, file_string).expect("Should write");
     let tool_bar = Toolbar::new();
         let save_button = ToolButton::new::<Widget>(None, Some("Save"));
         tool_bar.insert(&save_button, 0);
-    for i in my_commands {
+    for mut i in my_commands {
+        let register = has_template(&i);
         let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+        
+        
+        if !register {
+        
+        // let cmd = real_command();
+        
+        // Check if command is valid
+        custom_button.connect_clicked(move |_| {
+            //let notebook = &my_ui.deref().borrow_mut().notebook;
+          //  let tabs = &my_ui.deref().borrow_mut().tabs;
+            // let real_command = generate_command(&i).unwrap();
+            let output = execute_command(i.clone());
+            println!("Output is: {}", output);
+        });
+        }
+        
+        
         tool_bar.add(&custom_button);
     }
     
