@@ -5,8 +5,6 @@ Raide - A ray of light in the world of IDEs
 
 ## Introduction
 
-As IDEs grow big with many MenuItems, working with them gets confusing. Sadly, many IDEs are only suited to a subset of languages.
-
 Raide is a simple IDE with a multi project approach in mind. It features currently:
 
 * A save button
@@ -14,6 +12,7 @@ Raide is a simple IDE with a multi project approach in mind. It features current
 * Source highlighting of many languages including Rust, Java, JSON and Markdown.
 * Generatable buttons with commands read from the workspace file raide.ron
 
+It is useful on platforms with limited resources, as the application requires only 70 MB RAM.
 ## Intended features
 
 Another useful feature would be code completion on file level, which is file and project dependent.
