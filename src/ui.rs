@@ -8,6 +8,3 @@ pub struct UI {
     pub lang: LanguageManager,
     pub tree_selection: TreeSelection,
 }
-// TODO Elemente auch noch speichern
-
-// Do not implement, instead generate the struct at the end and put their the elements
