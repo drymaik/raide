@@ -148,12 +148,12 @@ fn main() -> std::io::Result<()> {
         treeview.append_column(&path_column);
         treeview.set_model(Some(&treestore));
 
-        treestore.insert_with_values(
+        let my_parent = treestore.insert_with_values(
             None,
             None,
             &[0, 1],
             &[
-                &"Project".to_value(),
+                &open_content.name.to_value(),
                 &"Placeholder for Welcome Screen".to_value(),
             ],
         );
@@ -170,7 +170,7 @@ fn main() -> std::io::Result<()> {
         // let mut exclude_list = Vec::<String>::new();
         // exclude_list.push("target".to_owned());
         for path in paths {
-            add_node(&treestore, &path, None);
+            add_node(&treestore, &path, Some(&my_parent));
         }
 
         let paned = Paned::new(Orientation::Vertical);

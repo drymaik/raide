@@ -1,3 +1,3 @@
 pub fn main() {
-	println!("A simple file");
+    println!("A simple file");
 }
