@@ -5,7 +5,8 @@ use gtk::{
     BoxExt, CellRendererText, ContainerExt, IconSize, Notebook, NotebookExt, Orientation, Paned,
     ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
-    WidgetExt,
+    WidgetExt,Image,Window, GtkWindowExt,Label,Grid,GridExt,PositionType,FileChooserExt,FileChooser,ResponseType, ApplicationWindow, FileChooserWidget, FileChooserButton, FileChooserButtonExt, FileChooserDialog,
+    FileChooserWidgetExt, FileChooserNative,FileChooserNativeExt,FileChooserAction,WindowType,DialogExt,Button,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
@@ -35,6 +36,9 @@ fn main() -> std::io::Result<()> {
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8088".to_string());
     */
+    // Load image
+
+
 
     let build_command = Runcommand {
         name: "build".to_string(),
@@ -110,6 +114,7 @@ fn main() -> std::io::Result<()> {
 
         // We create the main window
         let win = gtk::ApplicationWindow::new(app);
+        win.set_icon_from_file("pictures/small.png");
         win.set_position(gtk::WindowPosition::Center);
         win.set_default_size(1024, 768);
         win.set_title("Raide");
@@ -183,6 +188,7 @@ fn main() -> std::io::Result<()> {
         notebook.set_scrollable(true);
         notebook.set_show_border(true);
 
+
         // Paned is used to shift the different views like left sidebar and Notebook or outputview
         let second_paned = Paned::new(Orientation::Horizontal);
         let tree_selection = tree_selection.clone();
@@ -192,6 +198,49 @@ fn main() -> std::io::Result<()> {
         project_pane.add(&treeview);
         second_paned.add1(&project_pane);
         let tabs = Vec::<gtk::Box>::new();
+
+    //    create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
+    //let my_btn = Button::new_with_label("Welcome here");
+
+    let my_vbox = gtk::Box::new(Orientation::Vertical, 5);
+    let my_label = Label::new(Some(&"Raide"));
+    let my_image = Image::new_from_file("pictures/normal.png");
+    let scroller = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+    // let my_file_dialog = FileChooserNative::new::<Window>(Some(&"Hey"), Some(&my_win), FileChooserAction::Open, Some(&"Accept"), Some(&"Cancel"));
+//    let my_button = Button::new_with_label("Open folder");
+//let my_dialog.
+//    my_button.
+    let my_button = Button::new_with_label("Open");
+    my_button.connect_clicked(move |_| {
+        let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
+        my_file_dialog.run();
+    });
+
+
+    // let my_file_btn = FileChooserButton::new_with_dialog::<FileChooserDialog>(&my_file_dialog);
+    // let my_file_dialog = FileChooserNative::new::<Window>(Some(&"Hey"), Some(&my_win), FileChooserAction::Open, Some(&"Accept"), Some(&"Cancel"));
+
+    // let my_file_dialog = FileChooserWidget::new(FileChooserAction::SelectFolder);
+/*
+[src]
+[−]
+pub fn new<P: IsA<Window>>(
+    title: Option<&str>,
+    parent: Option<&P>,
+    action: FileChooserAction,
+    accept_label: Option<&str>,
+    cancel_label: Option<&str>
+) -> FileChooserNative
+*/
+    my_vbox.add(&my_label);
+    my_vbox.add(&my_image);
+    my_vbox.add(&my_button);
+
+    scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+    scroller.set_min_content_height(500);
+    scroller.add(&my_vbox);
+    let mut tabs = tabs.clone();
+    create_tab(&notebook, &mut tabs, "Welcome","./Welcome", scroller.upcast());
         let my_ui = Rc::new(RefCell::new(UI {lang: manager.clone(), notebook: notebook.clone(), tabs: tabs.clone(), tree_selection: tree_selection.clone() }));
 
         // Scoping hack to use my_ui multiple times for consuming closures
