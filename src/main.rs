@@ -4,8 +4,8 @@ use gtk::prelude::*;
 use gtk::{
     BoxExt, CellRendererText, ContainerExt, IconSize, Notebook, NotebookExt, Orientation, Paned,
     ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
-    TreeSelection, TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn,
-    TreeViewExt, Widget, WidgetExt,
+    TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
+    WidgetExt,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
@@ -21,7 +21,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::fs::{metadata, File};
 use std::io::prelude::*;
-use std::io::{BufReader, Cursor, Error, Lines};
+use std::io::{BufReader, Error};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -96,7 +96,7 @@ fn main() -> std::io::Result<()> {
     uiapp.connect_activate(move |app| {
 
     let ws_file = load_good_file(Path::new(&f_string));
-    let mut ws_contents = ws_file;
+    let ws_contents = ws_file;
 
     let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
 
@@ -492,17 +492,16 @@ pub fn create_tab(
     my_path: &str,
     widget: Widget,
 ) -> u32 {
+    let children = notebook.get_children();
+    for value in children {
+        let label_text = notebook.get_menu_label_text(&value);
+        let wrapped = label_text.expect("Text from label doesn't exist");
+        if wrapped == my_path {
+            // match, do not show
 
-        let children = notebook.get_children();
-        for value in children {
-                let label_text = notebook.get_menu_label_text(&value);
-                let wrapped = label_text.expect("Text from label doesn't exist");
-                if wrapped == my_path {
-                    // match, do not show
-                    return 0;
-                }
-
+            return 0;
         }
+    }
 
     let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
     let button = gtk::Button::new();
@@ -517,7 +516,18 @@ pub fn create_tab(
     tab.pack_start(&button, false, false, 0);
     tab.show_all();
 
-    let index = notebook.append_page(&widget, Some(&tab));
+    let mut my_page = notebook.get_current_page();
+    match my_page {
+        None => {
+            my_page = Some(0);
+        }
+        Some(number) => {
+            my_page = Some(number);
+        }
+    }
+    let my_page = my_page.unwrap() + 1;
+    let index = notebook.insert_page(&widget, Some(&tab), Some(my_page));
+
     notebook.set_menu_label_text(&widget, my_path);
 
     button.connect_clicked(clone!(@weak notebook => move |_| {
@@ -529,7 +539,7 @@ pub fn create_tab(
 
     tabs.push(tab);
     notebook.show_all();
-
+    notebook.next_page();
     index
 }
 
