@@ -1,6 +1,3 @@
-//pub mod mapping;
-use std::collections::HashMap;
-
 // (glob, lang)
 // extensions should be splitted by ; and compared individually
 pub static LANG_TYPES: &[(&str, &str)] = &[
@@ -30,7 +27,7 @@ pub fn get_by_left(glob: &str) -> Option<&str> {
     for i in LANG_TYPES {
         if glob == i.0 {
             return Some(i.1);
-        } 
+        }
     }
     None
 }
