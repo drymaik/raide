@@ -4,6 +4,8 @@
 pub mod mapping;
 pub mod ui;
 pub mod ctags_api;
+pub mod workspace;
+pub mod utils;
 #[cfg(test)]
 mod tests {
     /*
