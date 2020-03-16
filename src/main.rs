@@ -30,6 +30,11 @@ use std::rc::Rc;
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     // read();
+    /*
+    let project_dir = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8088".to_string());
+    */
 
     let build_command = Runcommand {
         name: "build".to_string(),
@@ -487,6 +492,18 @@ pub fn create_tab(
     my_path: &str,
     widget: Widget,
 ) -> u32 {
+
+        let children = notebook.get_children();
+        for value in children {
+                let label_text = notebook.get_menu_label_text(&value);
+                let wrapped = label_text.expect("Text from label doesn't exist");
+                if wrapped == my_path {
+                    // match, do not show
+                    return 0;
+                }
+
+        }
+
     let close_image = gtk::Image::new_from_icon_name(Some("window-close"), IconSize::Button);
     let button = gtk::Button::new();
     let label = gtk::Label::new(Some(title));
@@ -498,7 +515,6 @@ pub fn create_tab(
 
     tab.pack_start(&label, false, false, 0);
     tab.pack_start(&button, false, false, 0);
-    // tab.pack_start(&info, false, false, 0);
     tab.show_all();
 
     let index = notebook.append_page(&widget, Some(&tab));
