@@ -1,5 +1,5 @@
 use gtk::{Notebook, TreeSelection};
-use sourceview::{LanguageManager};
+use sourceview::LanguageManager;
 /// UI-Structure to hold the notebook, its tabs and the TreeView for the left side
 /// The buffers should not be stored
 pub struct UI {

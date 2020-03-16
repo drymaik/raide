@@ -10,8 +10,8 @@ use gtk::{
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
 use raide::ui::UI;
-use raide::workspace::{Runcommand,Workspace};
 use raide::utils::get_pretty;
+use raide::workspace::{Runcommand, Workspace};
 use ron;
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::cell::RefCell;
@@ -21,7 +21,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::fs::{metadata, File};
 use std::io::prelude::*;
-use std::io::Error;
+use std::io::{BufReader, Cursor, Error, Lines};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -90,13 +90,10 @@ fn main() -> std::io::Result<()> {
     // GTK closure that is home to all Gtk-Elements and Widgets
     uiapp.connect_activate(move |app| {
 
-    let mut ws_file = File::open(Path::new(&f_string)).unwrap();
+    let ws_file = load_good_file(Path::new(&f_string));
+    let mut ws_contents = ws_file;
 
-    let mut ws_contents = String::new();
-// Read workspace from file
-    ws_file.read_to_string(&mut ws_contents).unwrap();
-
-    let open_content: Workspace = ron::de::from_str(&ws_contents).unwrap();
+    let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
 
     let my_commands = open_content.commands;
     // Toolbar contains at least a save button for a file
@@ -158,10 +155,10 @@ fn main() -> std::io::Result<()> {
 
         // TODO Move to user defined open directory
         let mut paths = fs::read_dir(".")
-            .unwrap()
+            .expect("Can't read workspace path given by user")
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, Error>>()
-            .unwrap();
+            .expect("Cannot collect workspace data into vector");
         paths.sort();
 
         // TODO add files that should be ignored
@@ -204,7 +201,7 @@ fn main() -> std::io::Result<()> {
         // TODO outputview should have the same highlighting language as the open tab
         // Check if command is valid
         let outputview = outputview.clone();
-        let outlang = manager.get_language("rust").unwrap();
+        let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed Gtk3-dev and gtksourceview3?");
         let fake_buffer = Buffer::new_with_language(&outlang.clone());
 
        {
@@ -223,22 +220,22 @@ fn main() -> std::io::Result<()> {
                 Some(value) => {
                     // Get the path stored inside the label
                     let label_text = notebook.get_menu_label_text(&value);
-                    let window = value.downcast::<ScrolledWindow>().unwrap();
-                    let inside_view = window.get_child().unwrap().downcast::<View>().unwrap();
-                    let inside_buffer = inside_view.get_buffer().unwrap();
+                    let window = value.downcast::<ScrolledWindow>().expect("Can't cast window to a scrolled window");
+                    let inside_view = window.get_child().expect("The child of the window is empty").downcast::<View>().expect("Can't cast Widget as view");
+                    let inside_buffer = inside_view.get_buffer().expect("Buffer is not accessible inside view");
 
                     let text_iter_start = inside_buffer.get_start_iter();
                     let text_iter_end = inside_buffer.get_end_iter();
                     let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
-                    let plain_text = the_text.unwrap().to_string();
+                    let plain_text = the_text.expect("Plain text from buffer doesn't exist").to_string();
 
-                    let wrapped = label_text.unwrap();
+                    let wrapped = label_text.expect("Text from label doesn't exist");
                     println!("Before");
                     println!("Wrapper: {}", wrapped);
                    // Save to the file using the path
                     fs::write(Path::new(&wrapped), plain_text).expect("Should write");
                     let mut clone_i = i.clone();
-                     clone_i.template_command(&Path::new(&wrapped).to_str().unwrap());
+                     clone_i.template_command(&Path::new(&wrapped).to_str().expect("The path can't be cast to a string"));
                      println!("I: {:?}",clone_i);
 
                      let output = Runcommand::execute_command(clone_i.clone());
@@ -277,16 +274,16 @@ fn main() -> std::io::Result<()> {
                 Some(value) => {
                     // Use path information from label
                     let label_text = notebook.get_menu_label_text(&value);
-                    let window = value.downcast::<ScrolledWindow>().unwrap();
-                    let inside_view = window.get_child().unwrap().downcast::<View>().unwrap();
-                    let inside_buffer = inside_view.get_buffer().unwrap();
+                    let window = value.downcast::<ScrolledWindow>().expect("Can't cast the Widget to a ScrolledWindow");
+                    let inside_view = window.get_child().expect("Can't get a child out of the window").downcast::<View>().expect("Can't cast the widget to a view");
+                    let inside_buffer = inside_view.get_buffer().expect("Can't access the buffer of the inside view");
 
                     let text_iter_start = inside_buffer.get_start_iter();
                     let text_iter_end = inside_buffer.get_end_iter();
                     let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
-                    let plain_text = the_text.unwrap().to_string();
+                    let plain_text = the_text.expect("Can't access the text of the inside buffer").to_string();
 
-                    let wrapped = label_text.unwrap();
+                    let wrapped = label_text.expect("Can't access the text of the label");
                     println!("Wrapper: {}", wrapped);
                     fs::write(Path::new(&wrapped), plain_text).expect("Should write");
                 }
@@ -297,76 +294,77 @@ fn main() -> std::io::Result<()> {
         tree_selection.connect_changed(clone!(@weak tree_selection => move |_| {
 
             let notebook = &my_ui.deref().borrow_mut().notebook;
-            let (my_model, my_iter) = tree_selection.get_selected().unwrap();
-            let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
-            let last_string = my_model.get_value(&my_iter, 0).get::<String>().unwrap().unwrap();
+            let (my_model, my_iter) = tree_selection.get_selected().expect("Cannot access the selected element");
+            let path_string = my_model.get_value(&my_iter, 1).get::<String>().expect("First unbox of path string failed").expect("Second unbox of path string failed");
+            let last_string = my_model.get_value(&my_iter, 0).get::<String>().expect("First unbox of last string failed").expect("Second unbox of last string failed");
             println!("{}", path_string);
 
             let my_path = Path::new(path_string.as_str());
             if my_path.exists() {
-                let mut my_file = File::open(my_path).unwrap();
-                let mut contents = String::new();
-                my_file.read_to_string(&mut contents).unwrap();
+        let my_file = load_invalid_file(my_path);
+        let contents = my_file;
+        let mut extension = get_extension_from_filename(path_string.as_str());
+        let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+        scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+        scrolled_window.set_min_content_height(500);
 
-                let mut extension = get_extension_from_filename(path_string.as_str());
-                println!("{:?}", extension);
+        // Generate a new view for the new tab
+        let my_view = View::new();
+        my_view.set_highlight_current_line(true);
+        my_view.set_auto_indent(true);
+        my_view.set_indent_on_tab(true);
+        my_view.set_insert_spaces_instead_of_tabs(true);
+        my_view.set_show_line_marks(true);
+        my_view.set_show_line_numbers(true);
 
-                let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-                scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-                scrolled_window.set_min_content_height(500);
+        let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+        text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+        text_window.set_min_content_height(500);
 
-                // Generate a new view for the new tab
-                let my_view = View::new();
-                my_view.set_highlight_current_line(true);
-                my_view.set_auto_indent(true);
-                my_view.set_indent_on_tab(true);
-                my_view.set_insert_spaces_instead_of_tabs(true);
-                my_view.set_show_line_marks(true);
-                my_view.set_show_line_numbers(true);
+        // Set the buffers display extension .rs means Rust for example
+        match extension {
+            None => {
+                // Set to markdown for displaying text
+                extension = Some("markdown");
+                let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                my_buffer.set_text(contents.as_str());
+                my_view.set_buffer(Some(&my_buffer));
+                scrolled_window.add(&my_view);
+                let mut tabs = tabs.clone();
+                create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
 
-                let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-                text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-                text_window.set_min_content_height(500);
-
-                // Set the buffers display extension .rs means Rust for example
-                match extension {
+            }
+            Some(ext) => {
+                let lookup = get_by_left(ext);
+                match lookup {
+                    // Non programming language extension
                     None => {
-                        // Set to markdown for displaying text
-                        extension = Some("md");
-                        let my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
+                        extension = Some("markdown");
+                        let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension 2")).expect("Can't call get_language from extension 2"));
                         my_buffer.set_text(contents.as_str());
                         my_view.set_buffer(Some(&my_buffer));
                         scrolled_window.add(&my_view);
                         let mut tabs = tabs.clone();
                         create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
-
                     }
-                    Some(ext) => {
-                        let lookup = get_by_left(ext);
-                        match lookup {
-                            // Non programming language extension
-                            None => {
-                                extension = Some("md");
-                                let my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
-                                my_buffer.set_text(contents.as_str());
-                                my_view.set_buffer(Some(&my_buffer));
-                                scrolled_window.add(&my_view);
-                                let mut tabs = tabs.clone();
-                                create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
-                            }
-                            // matched language string
-                            Some(lang) => {
-                                let my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());
-                                my_buffer.set_text(contents.as_str());
-                                my_view.set_buffer(Some(&my_buffer));
-                                scrolled_window.add(&my_view);
-                                let mut tabs = tabs.clone();
-                                create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
+                    // matched language string
+                    Some(lang) => {
+                        let my_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Existing language can't be used to instantiate buffer"));
+                        my_buffer.set_text(contents.as_str());
+                        my_view.set_buffer(Some(&my_buffer));
+                        scrolled_window.add(&my_view);
+                        let mut tabs = tabs.clone();
+                        create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
+                    }
+                }
                             }
                         }
                     }
-                }
-            }
+
+
+
+
+
         }));
 
         paned.add1(&notebook);
@@ -385,10 +383,28 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn load_file(path: &Path) -> String {
-    let mut file = File::open(path).unwrap();
+/// Tests the first line if it contains valid chars, if not returns that its invalid UTF-8.
+/// Then the user can correct the errors
+pub fn load_invalid_file(path: &Path) -> String {
+    let file = File::open(path).expect("Can't load file from path");
+    let mut reader = BufReader::new(file);
+    let mut result = String::new();
+
+    match reader.read_line(&mut result) {
+        Ok(_) => {
+            let data = fs::read_to_string(path).expect("Unable to read file");
+            data
+        }
+        Err(_error) => {
+            return "File is not encoded in UTF-8!".to_string();
+        }
+    }
+}
+
+pub fn load_good_file(path: &Path) -> String {
+    let mut file = File::open(path).expect("Can't load file from path");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
+    file.read_to_string(&mut contents).expect("Reading failed");
     contents
 }
 
@@ -453,19 +469,6 @@ pub fn save_it(textbuffer: &TextBuffer) {
     fs::write("file.rs", other_text).expect("Should write");
 }
 
-// Dependent on current tab
-pub fn format_it(textbuffer: &TextBuffer) -> std::io::Result<()> {
-    save_it(&textbuffer);
-    format_file();
-
-    // TODO reload file from selecters full file name
-    let mut file = File::open("file.rs")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    textbuffer.set_text(&contents);
-    Ok(())
-}
-
 // create tab based on ui elements
 pub fn create_tab(
     notebook: &Notebook,
@@ -503,79 +506,6 @@ pub fn create_tab(
 
     index
 }
-
-// Based on ui elements, removing method head
-pub fn click_listener(
-    tree_selection: &TreeSelection,
-    manager: &LanguageManager,
-    notebook: Notebook,
-    tabs: &mut Vec<gtk::Box>,
-) {
-    let tabs = tabs.clone();
-    tree_selection.connect_changed(clone!(@weak tree_selection, @weak manager  => move |_| {
-        let (my_model, my_iter) = tree_selection.get_selected().unwrap();
-        let path_string = my_model.get_value(&my_iter, 1).get::<String>().unwrap().unwrap();
-        let last_string = my_model.get_value(&my_iter, 0).get::<String>().unwrap().unwrap();
-        println!("{}", path_string);
-
-        let my_path = Path::new(path_string.as_str());
-        if my_path.exists() {
-
-            let mut contents = load_file(&my_path);
-            let mut my_file = File::open(my_path).unwrap();
-            my_file.read_to_string(&mut contents).unwrap();
-
-            let mut extension = get_extension_from_filename(path_string.as_str());
-            println!("{:?}", extension);
-
-            let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-
-
-            let my_view = View::new();
-
-
-            match extension {
-                None => {
-                    // Set to markdown for displaying text
-                    extension = Some("md");
-                    let my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
-
-                    // set text from file
-                    my_buffer.set_text(&contents);
-                    my_view.set_buffer(Some(&my_buffer));
-                    scrolled_window.add(&my_view);
-                    let mut tabs = tabs.clone();
-                    create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
-
-                }
-                Some(ext) => {
-                    let lookup = get_by_left(ext);
-                    match lookup {
-                        // Non programming language extension
-                        None => {
-                            extension = Some("md");
-                            let my_buffer = Buffer::new_with_language(&manager.get_language(extension.unwrap()).unwrap());
-                            my_view.set_buffer(Some(&my_buffer));
-                            scrolled_window.add(&my_view);
-                            let mut tabs = tabs.clone();
-                            create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
-                        }
-                        // matched lang string
-                        Some(lang) => {
-
-                            let my_buffer = Buffer::new_with_language(&manager.get_language(lang).unwrap());
-                            my_view.set_buffer(Some(&my_buffer));
-                            scrolled_window.add(&my_view);
-                            let mut tabs = tabs.clone();
-                            create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
-                        }
-                    }
-                }
-            }
-        }
-    }));
-}
-
 
 // Format file depending on selected tab -> file relation
 pub fn format_file() -> String {
