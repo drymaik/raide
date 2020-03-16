@@ -301,64 +301,74 @@ fn main() -> std::io::Result<()> {
 
             let my_path = Path::new(path_string.as_str());
             if my_path.exists() {
-        let my_file = load_invalid_file(my_path);
-        let contents = my_file;
-        let mut extension = get_extension_from_filename(path_string.as_str());
-        let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-        scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-        scrolled_window.set_min_content_height(500);
+                // Check again, a directory should not open a tag.
+                if !metadata(my_path).map(|m| m.is_dir()).unwrap_or(false) {
+                    // It is not a folder, continue normally
+                    let my_file = load_invalid_file(my_path);
+                    let contents = my_file;
+                    let mut extension = get_extension_from_filename(path_string.as_str());
+                    let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+                    scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+                    scrolled_window.set_min_content_height(500);
 
-        // Generate a new view for the new tab
-        let my_view = View::new();
-        my_view.set_highlight_current_line(true);
-        my_view.set_auto_indent(true);
-        my_view.set_indent_on_tab(true);
-        my_view.set_insert_spaces_instead_of_tabs(true);
-        my_view.set_show_line_marks(true);
-        my_view.set_show_line_numbers(true);
+                    // Generate a new view for the new tab
+                    let my_view = View::new();
+                    my_view.set_highlight_current_line(true);
+                    my_view.set_auto_indent(true);
+                    my_view.set_indent_on_tab(true);
+                    my_view.set_insert_spaces_instead_of_tabs(true);
+                    my_view.set_show_line_marks(true);
+                    my_view.set_show_line_numbers(true);
 
-        let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-        text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-        text_window.set_min_content_height(500);
+                    let text_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+                    text_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+                    text_window.set_min_content_height(500);
 
-        // Set the buffers display extension .rs means Rust for example
-        match extension {
-            None => {
-                // Set to markdown for displaying text
-                extension = Some("markdown");
-                let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
-                my_buffer.set_text(contents.as_str());
-                my_view.set_buffer(Some(&my_buffer));
-                scrolled_window.add(&my_view);
-                let mut tabs = tabs.clone();
-                create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
+                    // Set the buffers display extension .rs means Rust for example
+                    match extension {
+                        None => {
+                            // Set to markdown for displaying text
+                            extension = Some("markdown");
+                            let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                            my_buffer.set_text(contents.as_str());
+                            my_view.set_buffer(Some(&my_buffer));
+                            scrolled_window.add(&my_view);
+                            let mut tabs = tabs.clone();
+                            create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
 
-            }
-            Some(ext) => {
-                let lookup = get_by_left(ext);
-                match lookup {
-                    // Non programming language extension
-                    None => {
-                        extension = Some("markdown");
-                        let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension 2")).expect("Can't call get_language from extension 2"));
-                        my_buffer.set_text(contents.as_str());
-                        my_view.set_buffer(Some(&my_buffer));
-                        scrolled_window.add(&my_view);
-                        let mut tabs = tabs.clone();
-                        create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
-                    }
-                    // matched language string
-                    Some(lang) => {
-                        let my_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Existing language can't be used to instantiate buffer"));
-                        my_buffer.set_text(contents.as_str());
-                        my_view.set_buffer(Some(&my_buffer));
-                        scrolled_window.add(&my_view);
-                        let mut tabs = tabs.clone();
-                        create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
-                    }
-                }
-                            }
                         }
+                        Some(ext) => {
+                            let lookup = get_by_left(ext);
+                            match lookup {
+                                // Non programming language extension
+                                None => {
+                                    extension = Some("markdown");
+                                    let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension 2")).expect("Can't call get_language from extension 2"));
+                                    my_buffer.set_text(contents.as_str());
+                                    my_view.set_buffer(Some(&my_buffer));
+                                    scrolled_window.add(&my_view);
+                                    let mut tabs = tabs.clone();
+                                    create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
+                                }
+                                // matched language string
+                                Some(lang) => {
+                                    let my_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Existing language can't be used to instantiate buffer"));
+                                    my_buffer.set_text(contents.as_str());
+                                    my_view.set_buffer(Some(&my_buffer));
+                                    scrolled_window.add(&my_view);
+                                    let mut tabs = tabs.clone();
+                                    create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
+                                }
+                            }
+                                        }
+                                }                }
+
+
+
+
+
+
+
                     }
 
 
