@@ -6,8 +6,8 @@ use gtk::{
     BoxExt, CellRendererText, ContainerExt, IconSize, Notebook, NotebookExt, Orientation, Paned,
     ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
-    WidgetExt,Image, GtkWindowExt,Label,ResponseType, ApplicationWindow, FileChooserDialog
-    ,FileChooserAction,DialogExt,Button,
+    WidgetExt,Image, GtkWindowExt,Label,ResponseType, ApplicationWindow, FileChooserDialog,SelectionMode,
+    FileChooserAction,DialogExt,Button,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
@@ -154,13 +154,24 @@ fn main() -> std::io::Result<()> {
         treeview.append_column(&path_column);
         treeview.set_model(Some(&treestore));
 
+        let _my_welcome = treestore.insert_with_values(
+            None,
+            None,
+            &[0, 1],
+            &[
+                //&open_content.name.to_value(),
+                &"Welcome",
+                &"Welcome".to_value(),
+            ],
+        );
+
         let my_parent = treestore.insert_with_values(
             None,
             None,
             &[0, 1],
             &[
                 &open_content.name.to_value(),
-                &"Placeholder for Welcome Screen".to_value(),
+                &"Project settings".to_value(),
             ],
         );
 
@@ -175,9 +186,12 @@ fn main() -> std::io::Result<()> {
         // TODO add files that should be ignored
         // let mut exclude_list = Vec::<String>::new();
         // exclude_list.push("target".to_owned());
+
+
         for path in paths {
             add_node(&treestore, &path, Some(&my_parent));
         }
+
 
         let paned = Paned::new(Orientation::Vertical);
         let tree_selection = treeview.get_selection().clone();
@@ -200,33 +214,7 @@ fn main() -> std::io::Result<()> {
         second_paned.add1(&project_pane);
         let tabs = Vec::<gtk::Box>::new();
 
-    let my_vbox = gtk::Box::new(Orientation::Vertical, 5);
-    let my_label = Label::new(Some(&"Raide"));
-    let my_image = Image::new_from_file("pictures/normal.png");
-    let scroller = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
 
-    let my_button = Button::new_with_label("Open");
-    my_button.connect_clicked(move |_| {
-        let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
-        my_file_dialog.set_select_multiple(true);
-        my_file_dialog.run();
-        let files = my_file_dialog.get_filenames();
-        println!("{:?}", files);
-        my_file_dialog.destroy();
-        for element in files {
-            println!("Open project at {:?}", element);
-        }
-    });
-
-    my_vbox.add(&my_label);
-    my_vbox.add(&my_image);
-    my_vbox.add(&my_button);
-
-    scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-    scroller.set_min_content_height(500);
-    scroller.add(&my_vbox);
-    let mut tabs = tabs.clone();
-    create_tab(&notebook, &mut tabs, "Welcome","./Welcome", scroller.upcast());
         let my_ui = Rc::new(RefCell::new(UI {lang: manager.clone(), notebook: notebook.clone(), tabs: tabs.clone(), tree_selection: tree_selection.clone() }));
 
         // Scoping hack to use my_ui multiple times for consuming closures
@@ -331,6 +319,7 @@ fn main() -> std::io::Result<()> {
         });
           }
     let my_ui = my_ui.clone();
+    tree_selection.set_mode(SelectionMode::Browse);
         tree_selection.connect_changed(clone!(@weak tree_selection => move |_| {
 
             let notebook = &my_ui.deref().borrow_mut().notebook;
@@ -403,6 +392,38 @@ fn main() -> std::io::Result<()> {
                         }
                     }
                 }
+                // It is a dir
+
+            }
+            // It must be the welcome screen
+            else if my_path.to_str().expect("Can't convert path to str") == "Welcome" {
+                let my_vbox = gtk::Box::new(Orientation::Vertical, 5);
+                let my_label = Label::new(Some(&"Raide"));
+                let my_image = Image::new_from_file("pictures/normal.png");
+                let scroller = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+
+                let my_button = Button::new_with_label("Open");
+                my_button.connect_clicked(move |_| {
+                    let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
+                    my_file_dialog.set_select_multiple(true);
+                    my_file_dialog.run();
+                    let files = my_file_dialog.get_filenames();
+                    println!("{:?}", files);
+                    my_file_dialog.destroy();
+                    for element in files {
+                        println!("Open project at {:?}", element);
+                    }
+                });
+
+                my_vbox.add(&my_label);
+                my_vbox.add(&my_image);
+                my_vbox.add(&my_button);
+
+                scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
+                scroller.set_min_content_height(500);
+                scroller.add(&my_vbox);
+                let mut tabs = tabs.clone();
+                create_tab(&notebook, &mut tabs, "Welcome","./Welcome", scroller.upcast());
             }
         }));
 
@@ -584,4 +605,8 @@ pub fn format_file() -> String {
 
     let hello = output.stderr;
     String::from_utf8(hello).expect("Jey")
+}
+
+pub fn select_it() -> bool {
+    true
 }
