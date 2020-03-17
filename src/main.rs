@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -213,7 +214,14 @@ fn main() -> std::io::Result<()> {
     let my_button = Button::new_with_label("Open");
     my_button.connect_clicked(move |_| {
         let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
-        my_file_dialog.run();
+        let result = my_file_dialog.run();
+        my_file_dialog.destroy();
+        if result == ResponseType::Accept {
+            println!("YES");
+        }
+        else if result == ResponseType::Cancel {
+            println!("Nope");
+        }
     });
 
 
@@ -542,12 +550,13 @@ pub fn create_tab(
     widget: Widget,
 ) -> u32 {
     let children = notebook.get_children();
-    for value in children {
-        let label_text = notebook.get_menu_label_text(&value);
+    for (key,value) in children.iter().enumerate() {
+        let label_text = notebook.get_menu_label_text(value);
         let wrapped = label_text.expect("Text from label doesn't exist");
         if wrapped == my_path {
             // match, do not show
-
+            // switch to it
+            notebook.set_current_page(Some(key.try_into().expect("Switching page error")));
             return 0;
         }
     }
