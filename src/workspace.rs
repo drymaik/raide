@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-
+use std::path::{Path, PathBuf};
+use std::fs::{self,metadata, File};
+use crate::utils::{get_pretty, load_good_file, load_invalid_file};
 /// The workspace describes an environment,
 /// which contains files and determines the location of commands
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -96,5 +98,73 @@ impl Runcommand {
             hello = output.stdout;
         }
         String::from_utf8(hello).expect("Jey")
+    }
+}
+
+/// Load a new workspace from a given folder, then returns the newly created workspace
+pub fn load_workspace(path: &Path) -> Workspace {
+    let build_command = Runcommand {
+        name: "build".to_string(),
+        has_button: true,
+        command: "cargo build".to_string(),
+        key_binding: None,
+    };
+
+    let run_command = Runcommand {
+        name: "run".to_string(),
+        has_button: true,
+        command: "./file".to_string(),
+        key_binding: None,
+    };
+
+    let format_command = Runcommand {
+        name: "format".to_string(),
+        has_button: true,
+        command: "rustfmt {file}".to_string(),
+        key_binding: None,
+    };
+
+    // Feature: start with welcome screen
+    let my_ws : Workspace;
+
+    let ws_there = path.exists();
+    // If raide.ron is there use this else generate a new raide.ron
+    if !ws_there {
+        let file_name = path.file_name().expect("Couldn't extract dirname from it");
+        // TODO check if file_name is dir
+
+        my_ws = Workspace {
+            name: file_name.to_str().expect("OS-String can't be converted to &str").to_string(),
+            exclude_files: vec![],
+            commands: vec![
+                build_command.clone(),
+                run_command.clone(),
+                format_command.clone(),
+            ],
+        };
+        let fp = path;
+        File::create(&fp).expect(format!("Error at creating the file at path {:?}", fp).as_str());
+
+        let pretty = get_pretty();
+        // Stringify the workspace object into the file
+        let mut file_string = String::new();
+        file_string.push_str(
+            ron::ser::to_string_pretty(&my_ws, pretty.clone())
+                .expect("Serialization failed")
+                .as_mut_str(),
+        );
+
+        fs::write(&fp, file_string).expect("Should write");
+        my_ws
+    }
+    else {
+
+        // Load the workspace from the given path
+
+        let ws_file = load_good_file(path);
+        let ws_contents = ws_file;
+
+        my_ws = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
+        my_ws
     }
 }

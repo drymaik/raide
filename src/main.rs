@@ -12,8 +12,8 @@ use gtk::{
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
 use raide::ui::UI;
-use raide::utils::get_pretty;
-use raide::workspace::{Runcommand, Workspace};
+use raide::utils::{get_pretty, load_good_file, load_invalid_file};
+use raide::workspace::{Runcommand, Workspace, load_workspace};
 use ron;
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::cell::RefCell;
@@ -41,57 +41,6 @@ fn main() -> std::io::Result<()> {
 
 
 
-    let build_command = Runcommand {
-        name: "build".to_string(),
-        has_button: true,
-        command: "cargo build".to_string(),
-        key_binding: None,
-    };
-
-    let run_command = Runcommand {
-        name: "run".to_string(),
-        has_button: true,
-        command: "./file".to_string(),
-        key_binding: None,
-    };
-
-    let format_command = Runcommand {
-        name: "format".to_string(),
-        has_button: true,
-        command: "rustfmt {file}".to_string(),
-        key_binding: None,
-    };
-
-    // Feature: start with welcome screen
-    let my_ws = Workspace {
-        name: "raide".to_string(),
-        exclude_files: vec![],
-        commands: vec![
-            build_command.clone(),
-            run_command.clone(),
-            format_command.clone(),
-        ],
-    };
-    let f_string = "raide.ron";
-
-    let ws_there = std::path::Path::new(&f_string).exists();
-    // If raide.ron is there use this else generate a new raide.ron
-    if !ws_there {
-        let fp = Path::new(&f_string);
-        File::create(&fp).expect(format!("Error at creating the file at path {:?}", fp).as_str());
-
-        let pretty = get_pretty();
-        // Stringify the workspace object into the file
-        let mut file_string = String::new();
-        file_string.push_str(
-            ron::ser::to_string_pretty(&my_ws, pretty.clone())
-                .expect("Serialization failed")
-                .as_mut_str(),
-        );
-
-        fs::write(&fp, file_string).expect("Should write");
-    }
-
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
         gio::ApplicationFlags::FLAGS_NONE,
@@ -100,10 +49,9 @@ fn main() -> std::io::Result<()> {
     // GTK closure that is home to all Gtk-Elements and Widgets
     uiapp.connect_activate(move |app| {
 
-    let ws_file = load_good_file(Path::new(&f_string));
-    let ws_contents = ws_file;
-
-    let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
+    let f_string = "raide.ron";
+    let open_content = load_workspace(&Path::new(&f_string));
+    //let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
 
     let my_commands = open_content.commands;
     // Toolbar contains at least a save button for a file
@@ -443,30 +391,7 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-/// Tests the first line if it contains valid chars, if not returns that its invalid UTF-8.
-/// Then the user can correct the errors
-pub fn load_invalid_file(path: &Path) -> String {
-    let file = File::open(path).expect("Can't load file from path");
-    let mut reader = BufReader::new(file);
-    let mut result = String::new();
 
-    match reader.read_line(&mut result) {
-        Ok(_) => {
-            let data = fs::read_to_string(path).expect("Unable to read file");
-            data
-        }
-        Err(_error) => {
-            return "File is not encoded in UTF-8!".to_string();
-        }
-    }
-}
-
-pub fn load_good_file(path: &Path) -> String {
-    let mut file = File::open(path).expect("Can't load file from path");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Reading failed");
-    contents
-}
 
 // https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
 pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
