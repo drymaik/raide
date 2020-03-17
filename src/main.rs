@@ -6,8 +6,8 @@ use gtk::{
     BoxExt, CellRendererText, ContainerExt, IconSize, Notebook, NotebookExt, Orientation, Paned,
     ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
-    WidgetExt,Image,Window, GtkWindowExt,Label,Grid,GridExt,PositionType,FileChooserExt,FileChooser,ResponseType, ApplicationWindow, FileChooserWidget, FileChooserButton, FileChooserButtonExt, FileChooserDialog,
-    FileChooserWidgetExt, FileChooserNative,FileChooserNativeExt,FileChooserAction,WindowType,DialogExt,Button,
+    WidgetExt,Image, GtkWindowExt,Label,ResponseType, ApplicationWindow, FileChooserDialog
+    ,FileChooserAction,DialogExt,Button,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
@@ -115,7 +115,7 @@ fn main() -> std::io::Result<()> {
 
         // We create the main window
         let win = gtk::ApplicationWindow::new(app);
-        win.set_icon_from_file("pictures/small.png");
+        win.set_icon_from_file("pictures/small.png").expect("Can't open icon file small.png");
         win.set_position(gtk::WindowPosition::Center);
         win.set_default_size(1024, 768);
         win.set_title("Raide");
@@ -131,7 +131,7 @@ fn main() -> std::io::Result<()> {
 
         let outputview = View::new();
         console_window.add(&outputview);
-        outputview.set_property("editable", &false).expect("property editable could'nt be set to false");
+        outputview.set_property("editable", &false).expect("property editable couldn't be set to false");
         outputview.set_property("cursor-visible", &false).expect("property cursor-visible couldn't be set to false");
 
         // Store the shown filename and the full path in the treestore
@@ -200,46 +200,24 @@ fn main() -> std::io::Result<()> {
         second_paned.add1(&project_pane);
         let tabs = Vec::<gtk::Box>::new();
 
-    //    create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
-    //let my_btn = Button::new_with_label("Welcome here");
-
     let my_vbox = gtk::Box::new(Orientation::Vertical, 5);
     let my_label = Label::new(Some(&"Raide"));
     let my_image = Image::new_from_file("pictures/normal.png");
     let scroller = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-    // let my_file_dialog = FileChooserNative::new::<Window>(Some(&"Hey"), Some(&my_win), FileChooserAction::Open, Some(&"Accept"), Some(&"Cancel"));
-//    let my_button = Button::new_with_label("Open folder");
-//let my_dialog.
-//    my_button.
+
     let my_button = Button::new_with_label("Open");
     my_button.connect_clicked(move |_| {
         let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
-        let result = my_file_dialog.run();
+        my_file_dialog.set_select_multiple(true);
+        my_file_dialog.run();
+        let files = my_file_dialog.get_filenames();
+        println!("{:?}", files);
         my_file_dialog.destroy();
-        if result == ResponseType::Accept {
-            println!("YES");
-        }
-        else if result == ResponseType::Cancel {
-            println!("Nope");
+        for element in files {
+            println!("Open project at {:?}", element);
         }
     });
 
-
-    // let my_file_btn = FileChooserButton::new_with_dialog::<FileChooserDialog>(&my_file_dialog);
-    // let my_file_dialog = FileChooserNative::new::<Window>(Some(&"Hey"), Some(&my_win), FileChooserAction::Open, Some(&"Accept"), Some(&"Cancel"));
-
-    // let my_file_dialog = FileChooserWidget::new(FileChooserAction::SelectFolder);
-/*
-[src]
-[−]
-pub fn new<P: IsA<Window>>(
-    title: Option<&str>,
-    parent: Option<&P>,
-    action: FileChooserAction,
-    accept_label: Option<&str>,
-    cancel_label: Option<&str>
-) -> FileChooserNative
-*/
     my_vbox.add(&my_label);
     my_vbox.add(&my_image);
     my_vbox.add(&my_button);
@@ -422,21 +400,10 @@ pub fn new<P: IsA<Window>>(
                                     create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());
                                 }
                             }
-                                        }
-                                }                }
-
-
-
-
-
-
-
+                        }
                     }
-
-
-
-
-
+                }
+            }
         }));
 
         paned.add1(&notebook);
