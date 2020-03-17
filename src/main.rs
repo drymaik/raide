@@ -28,6 +28,42 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 
+pub fn open_project(path: &Path, my_store: &mut TreeStore) {
+    // This needs loading of the workspace
+    // than adding tabs at the left side
+
+    let my_ws = load_workspace(path);
+    let my_parent = my_store.insert_with_values(
+        None,
+        None,
+        &[0, 1],
+        &[
+            &my_ws.name.to_value(),
+            &"Project settings".to_value(),
+        ],
+    );
+
+    // TODO Move to user defined open directory
+    let mut paths = fs::read_dir(path)
+        .expect("Can't read workspace path given by user")
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, Error>>()
+        .expect("Cannot collect workspace data into vector");
+    paths.sort();
+
+    // TODO add files that should be ignored
+    // let mut exclude_list = Vec::<String>::new();
+    // exclude_list.push("target".to_owned());
+
+
+    for path in paths {
+        add_node(&my_store, &path, Some(&my_parent));
+    }
+
+    // Now adding the tabs
+
+}
+
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     // read();
@@ -57,7 +93,37 @@ fn main() -> std::io::Result<()> {
     let project_dir = my_dir.clone();
     let raide_dir = my_dir.clone();
 
-    // Build the path with given folder location
+    // Store the shown filename and the full path in the treestore
+    let treestore = TreeStore::new(&[String::static_type(), String::static_type()]);
+    let treeview = TreeView::new();
+
+    let column = TreeViewColumn::new();
+    let cell = CellRendererText::new();
+    column.pack_start(&cell, true);
+    // For displaying text
+    column.add_attribute(&cell, "text", 0);
+    treeview.append_column(&column);
+
+    let path_column = TreeViewColumn::new();
+    let path_cell = CellRendererText::new();
+    path_column.pack_start(&path_cell, true);
+    path_column.add_attribute(&path_cell, "text", 1);
+    // Hidden column as hack to know the corresponding file
+    path_column.set_visible(false);
+    treeview.append_column(&path_column);
+    treeview.set_model(Some(&treestore));
+
+    let _my_welcome = treestore.insert_with_values(
+        None,
+        None,
+        &[0, 1],
+        &[
+            //&open_content.name.to_value(),
+            &"Welcome",
+            &"Welcome".to_value(),
+        ],
+    );
+
     let open_content = load_workspace(Path::new(&raide_dir));
 
     let my_commands = open_content.commands;
@@ -89,36 +155,7 @@ fn main() -> std::io::Result<()> {
         outputview.set_property("editable", &false).expect("property editable couldn't be set to false");
         outputview.set_property("cursor-visible", &false).expect("property cursor-visible couldn't be set to false");
 
-        // Store the shown filename and the full path in the treestore
-        let treestore = TreeStore::new(&[String::static_type(), String::static_type()]);
-        let treeview = TreeView::new();
 
-        let column = TreeViewColumn::new();
-        let cell = CellRendererText::new();
-        column.pack_start(&cell, true);
-        // For displaying text
-        column.add_attribute(&cell, "text", 0);
-        treeview.append_column(&column);
-
-        let path_column = TreeViewColumn::new();
-        let path_cell = CellRendererText::new();
-        path_column.pack_start(&path_cell, true);
-        path_column.add_attribute(&path_cell, "text", 1);
-        // Hidden column as hack to know the corresponding file
-        path_column.set_visible(false);
-        treeview.append_column(&path_column);
-        treeview.set_model(Some(&treestore));
-
-        let _my_welcome = treestore.insert_with_values(
-            None,
-            None,
-            &[0, 1],
-            &[
-                //&open_content.name.to_value(),
-                &"Welcome",
-                &"Welcome".to_value(),
-            ],
-        );
 
         let my_parent = treestore.insert_with_values(
             None,
@@ -358,7 +395,11 @@ fn main() -> std::io::Result<()> {
                 let scroller = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
 
                 let my_button = Button::new_with_label("Open");
+
+                {
+                let mut treestore = treestore.clone();
                 my_button.connect_clicked(move |_| {
+                    let mut treestore = treestore.clone();
                     let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
                     my_file_dialog.set_select_multiple(true);
                     my_file_dialog.run();
@@ -366,9 +407,12 @@ fn main() -> std::io::Result<()> {
                     println!("{:?}", files);
                     my_file_dialog.destroy();
                     for element in files {
+                        open_project(&element, &mut treestore);
                         println!("Open project at {:?}", element);
                     }
                 });
+
+            }
 
                 my_vbox.add(&my_label);
                 my_vbox.add(&my_image);
