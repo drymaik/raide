@@ -1,5 +1,5 @@
 use std::convert::TryInto;
-use gio::{AppInfoExt, AppInfo, ApplicationFlags, ApplicationCommandLineExt, ApplicationCommandLine};
+use gio::{ApplicationFlags};
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -13,18 +13,16 @@ use gtk::{
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
 use raide::ui::UI;
-use raide::utils::{get_pretty, load_good_file, load_invalid_file};
-use raide::workspace::{Runcommand, Workspace, load_workspace};
-use ron;
+use raide::utils::{load_invalid_file};
+use raide::workspace::{Runcommand, load_workspace};
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
-use std::fs::{metadata, File};
-use std::io::prelude::*;
-use std::io::{BufReader, Error};
+use std::fs::{metadata};
+use std::io::{Error};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -38,9 +36,14 @@ fn main() -> std::io::Result<()> {
 
     // Load image
 
-    let my_dir = env::args()
+    let mut my_dir = env::args()
             .nth(1)
             .unwrap_or_else(|| ".".to_string());
+
+            // Converts . to the long version of current working directory
+            if my_dir == ".".to_string() {
+                my_dir = std::env::current_dir().expect("Can't cast to current working directory").to_str().expect("Can't cast back to str").to_string();
+            }
 
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
@@ -51,20 +54,11 @@ fn main() -> std::io::Result<()> {
     // GTK closure that is home to all Gtk-Elements and Widgets
     uiapp.connect_activate(move |app| {
 
-    //     let mut my_flags = gio::ApplicationFlags::all();
-    //    my_flags.insert();
-        // let project_dir = OsStr::new(my_dir.as_str());
-        //// let constructed = gio::File::parse_name(my_dir.as_str()).expect("Hopefully parsed correct");
-    //let project_dir = constructed.get_path().expect("Receiving path");
     let project_dir = my_dir.clone();
-    //    let my_info = AppInfo::create_from_commandline();
-    //    let project_dir = constructed;
-/*
+    let raide_dir = my_dir.clone();
 
-*/
-    let f_string = "raide.ron";
-    let open_content = load_workspace(&Path::new(&f_string));
-    //let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
+    // Build the path with given folder location
+    let open_content = load_workspace(Path::new(&raide_dir));
 
     let my_commands = open_content.commands;
     // Toolbar contains at least a save button for a file

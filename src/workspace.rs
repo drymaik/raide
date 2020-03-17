@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use std::path::{Path, PathBuf};
-use std::fs::{self,metadata, File};
-use crate::utils::{get_pretty, load_good_file, load_invalid_file};
+use std::path::{Path};
+use std::fs::{self, File};
+use crate::utils::{get_pretty, load_good_file};
 /// The workspace describes an environment,
 /// which contains files and determines the location of commands
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -102,6 +102,7 @@ impl Runcommand {
 }
 
 /// Load a new workspace from a given folder, then returns the newly created workspace
+/// Please provide the path without raide.ron as this expects an directory
 pub fn load_workspace(path: &Path) -> Workspace {
     let build_command = Runcommand {
         name: "build".to_string(),
@@ -126,8 +127,12 @@ pub fn load_workspace(path: &Path) -> Workspace {
 
     // Feature: start with welcome screen
     let my_ws : Workspace;
+    let config_file = "raide.ron";
 
-    let ws_there = path.exists();
+    println!("The path was: {}", path.as_os_str().to_str().expect("Neu"));
+    let full_path_string = format!("{}/{}", path.to_str().expect("Should be working"), config_file);
+    let full_path = Path::new(&full_path_string);
+    let ws_there = full_path.exists();
     // If raide.ron is there use this else generate a new raide.ron
     if !ws_there {
         let file_name = path.file_name().expect("Couldn't extract dirname from it");
@@ -142,7 +147,7 @@ pub fn load_workspace(path: &Path) -> Workspace {
                 format_command.clone(),
             ],
         };
-        let fp = path;
+        let fp = full_path;
         File::create(&fp).expect(format!("Error at creating the file at path {:?}", fp).as_str());
 
         let pretty = get_pretty();
@@ -159,9 +164,8 @@ pub fn load_workspace(path: &Path) -> Workspace {
     }
     else {
 
-        // Load the workspace from the given path
-
-        let ws_file = load_good_file(path);
+        // Load the workspace from the given path (raide.ron)
+        let ws_file = load_good_file(full_path);
         let ws_contents = ws_file;
 
         my_ws = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");

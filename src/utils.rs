@@ -1,7 +1,7 @@
 use ron::ser::PrettyConfig;
-use std::path::{Path, PathBuf};
-use std::fs::{self,metadata, File};
-use std::io::{BufRead, BufReader, Error, Read};
+use std::path::{Path};
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Read};
 /// Ron prettifier
 pub fn get_pretty() -> PrettyConfig {
     PrettyConfig {
