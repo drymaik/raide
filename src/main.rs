@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use gio::{AppInfoExt, AppInfo, ApplicationFlags, ApplicationCommandLineExt, ApplicationCommandLine};
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
@@ -32,23 +33,35 @@ use std::rc::Rc;
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     // read();
-    /*
-    let project_dir = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8088".to_string());
-    */
+
+
+
     // Load image
 
-
+    let my_dir = env::args()
+            .nth(1)
+            .unwrap_or_else(|| ".".to_string());
 
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
-        gio::ApplicationFlags::FLAGS_NONE,
+        //ApplicationFlags::HANDLES_COMMAND_LINE,
+        ApplicationFlags::FLAGS_NONE,
     )
     .expect("Application::new failed");
     // GTK closure that is home to all Gtk-Elements and Widgets
     uiapp.connect_activate(move |app| {
 
+    //     let mut my_flags = gio::ApplicationFlags::all();
+    //    my_flags.insert();
+        // let project_dir = OsStr::new(my_dir.as_str());
+        //// let constructed = gio::File::parse_name(my_dir.as_str()).expect("Hopefully parsed correct");
+    //let project_dir = constructed.get_path().expect("Receiving path");
+    let project_dir = my_dir.clone();
+    //    let my_info = AppInfo::create_from_commandline();
+    //    let project_dir = constructed;
+/*
+
+*/
     let f_string = "raide.ron";
     let open_content = load_workspace(&Path::new(&f_string));
     //let open_content: Workspace = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
@@ -124,7 +137,7 @@ fn main() -> std::io::Result<()> {
         );
 
         // TODO Move to user defined open directory
-        let mut paths = fs::read_dir(".")
+        let mut paths = fs::read_dir(project_dir)
             .expect("Can't read workspace path given by user")
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, Error>>()
@@ -386,7 +399,8 @@ fn main() -> std::io::Result<()> {
         // Don't forget to make all widgets visible.
         win.show_all();
     });
-    uiapp.run(&env::args().collect::<Vec<_>>());
+    uiapp.run(&vec![]);
+    // uiapp.run(&env::args().collect::<Vec<_>>());
 
     Ok(())
 }
