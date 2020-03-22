@@ -8,7 +8,7 @@ use gtk::{
     ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
     WidgetExt,Image, GtkWindowExt,Label,ResponseType, ApplicationWindow, FileChooserDialog,SelectionMode,
-    FileChooserAction,DialogExt,Button,
+    FileChooserAction,DialogExt,Button,ComboBoxExt, ComboBox, ComboBoxTextExt, ComboBoxText,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
@@ -127,6 +127,22 @@ fn main() -> std::io::Result<()> {
     let open_content = load_workspace(Path::new(&raide_dir));
 
     let my_commands = open_content.commands;
+
+    // Storing the editor in this main widget
+    let gridbox = gtk::Box::new(Orientation::Vertical, 5);
+
+    // Put a combobox and a toolbar as a workspace command palette
+    // Put this inside a loop
+    let combo_box = ComboBoxText::new();
+    combo_box.append_text("Project 1");
+    combo_box.append_text("Project 2");
+    combo_box.set_active(Some(1));
+
+    let my_box = gtk::Box::new(Orientation::Horizontal, 5);
+    my_box.add(&combo_box);
+    gridbox.add(&my_box);
+
+
     // Toolbar contains at least a save button for a file
     let tool_bar = Toolbar::new();
         let save_button = ToolButton::new::<Widget>(None, Some("Save"));
@@ -141,8 +157,7 @@ fn main() -> std::io::Result<()> {
         win.set_default_size(1024, 768);
         win.set_title("Raide");
 
-        // Storing the editor in this main widget
-        let gridbox = gtk::Box::new(Orientation::Vertical, 5);
+
         gridbox.add(&tool_bar);
 
         // Console with read only source view
@@ -156,7 +171,7 @@ fn main() -> std::io::Result<()> {
         outputview.set_property("cursor-visible", &false).expect("property cursor-visible couldn't be set to false");
 
 
-
+/*
         let my_parent = treestore.insert_with_values(
             None,
             None,
@@ -167,8 +182,10 @@ fn main() -> std::io::Result<()> {
             ],
         );
 
+        //
+
         // TODO Move to user defined open directory
-        let mut paths = fs::read_dir(project_dir)
+        let mut paths = fs::read_dir(project_dir.clone())
             .expect("Can't read workspace path given by user")
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, Error>>()
@@ -183,6 +200,7 @@ fn main() -> std::io::Result<()> {
         for path in paths {
             add_node(&treestore, &path, Some(&my_parent));
         }
+        */
 
 
         let paned = Paned::new(Orientation::Vertical);
@@ -226,6 +244,7 @@ fn main() -> std::io::Result<()> {
 
        {
         let my_ui = my_ui.clone();
+        let project_dir = project_dir.clone();
         // Real magic happens here
         custom_button.connect_clicked(move |_|  {
 
@@ -258,7 +277,7 @@ fn main() -> std::io::Result<()> {
                      clone_i.template_command(&Path::new(&wrapped).to_str().expect("The path can't be cast to a string"));
                      println!("I: {:?}",clone_i);
 
-                     let output = Runcommand::execute_command(clone_i.clone());
+                     let output = Runcommand::execute_command(clone_i.clone(), &project_dir);
             if !output.is_empty() {
                 // Something to display
                 fake_buffer.set_text(&output);
@@ -270,7 +289,7 @@ fn main() -> std::io::Result<()> {
          }
 
             // Displaying without registering
-            let output = Runcommand::execute_command(i.clone());
+            let output = Runcommand::execute_command(i.clone(), &project_dir);
             if !output.is_empty() {
 
                 fake_buffer.set_text(&output);
@@ -402,14 +421,21 @@ fn main() -> std::io::Result<()> {
                     let mut treestore = treestore.clone();
                     let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
                     my_file_dialog.set_select_multiple(true);
-                    my_file_dialog.run();
+                    let result = my_file_dialog.run();
                     let files = my_file_dialog.get_filenames();
                     println!("{:?}", files);
                     my_file_dialog.destroy();
-                    for element in files {
-                        open_project(&element, &mut treestore);
-                        println!("Open project at {:?}", element);
+                    match result {
+                        ResponseType::Cancel => {}
+                        ResponseType::Accept => {
+                            for element in files {
+                                open_project(&element, &mut treestore);
+                                println!("Open project at {:?}", element);
+                            }
+                        }
+                        _ => {}
                     }
+
                 });
 
             }

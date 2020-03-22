@@ -86,12 +86,13 @@ impl Runcommand {
         }
     }
     /// This function generates a command object, which then gets executed.
-    pub fn execute_command(the_cmd: Runcommand) -> String {
-        let mut my_cmd = the_cmd.generate_command().unwrap();
+    pub fn execute_command(the_cmd: Runcommand, cwd: &String) -> String {
+        // Fetch from currently selected file aka Path from belonging Tab mapped to project root
+        let mut my_cwd = the_cmd.generate_command().unwrap();
         let output = if cfg!(target_os = "windows") {
-            my_cmd.output().expect("failed to execute process")
+            my_cwd.current_dir(cwd).output().expect("failed to execute process")
         } else {
-            my_cmd.output().expect("failed to execute process")
+            my_cwd.current_dir(cwd).output().expect("failed to execute process")
         };
         let mut hello = output.stderr;
         if hello.is_empty() {
