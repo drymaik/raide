@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::path::{Path};
 use std::fs::{self, File};
-use crate::utils::{get_pretty, load_good_file};
+use crate::utils::{get_pretty, load_file_checked};
 /// The workspace describes an environment,
 /// which contains files and determines the location of commands
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -88,11 +88,11 @@ impl Runcommand {
     /// This function generates a command object, which then gets executed.
     pub fn execute_command(the_cmd: Runcommand, cwd: &String) -> String {
         // Fetch from currently selected file aka Path from belonging Tab mapped to project root
-        let mut my_cwd = the_cmd.generate_command().unwrap();
+        let mut my_cmd = the_cmd.generate_command().unwrap();
         let output = if cfg!(target_os = "windows") {
-            my_cwd.current_dir(cwd).output().expect("failed to execute process")
+            my_cmd.current_dir(cwd).output().expect("failed to execute process")
         } else {
-            my_cwd.current_dir(cwd).output().expect("failed to execute process")
+            my_cmd.current_dir(cwd).output().expect("failed to execute process")
         };
         let mut hello = output.stderr;
         if hello.is_empty() {
@@ -166,7 +166,7 @@ pub fn load_workspace(path: &Path) -> Workspace {
     else {
 
         // Load the workspace from the given path (raide.ron)
-        let ws_file = load_good_file(full_path);
+        let ws_file = load_file_checked(full_path);
         let ws_contents = ws_file;
 
         my_ws = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");

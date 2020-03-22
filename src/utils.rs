@@ -13,9 +13,8 @@ pub fn get_pretty() -> PrettyConfig {
     }
 }
 
-/// Tests the first line if it contains valid chars, if not returns that its invalid UTF-8.
-/// Then the user can correct the errors
-pub fn load_invalid_file(path: &Path) -> String {
+/// Tests the first line if it contains valid chars, if not returns that it's invalid UTF-8
+pub fn load_file_checked(path: &Path) -> String {
     let file = File::open(path).expect("Can't load file from path");
     let mut reader = BufReader::new(file);
     let mut result = String::new();
@@ -29,11 +28,4 @@ pub fn load_invalid_file(path: &Path) -> String {
             return "File is not encoded in UTF-8!".to_string();
         }
     }
-}
-
-pub fn load_good_file(path: &Path) -> String {
-    let mut file = File::open(path).expect("Can't load file from path");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Reading failed");
-    contents
 }

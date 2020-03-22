@@ -13,7 +13,7 @@ use gtk::{
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
 use raide::ui::UI;
-use raide::utils::load_invalid_file;
+use raide::utils::load_file_checked;
 use raide::workspace::{load_workspace, Runcommand};
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::cell::RefCell;
@@ -355,7 +355,7 @@ fn main() -> std::io::Result<()> {
                 // Check again, a directory should not open a tag.
                 if !metadata(my_path).map(|m| m.is_dir()).unwrap_or(false) {
                     // It is not a folder, continue normally
-                    let my_file = load_invalid_file(my_path);
+                    let my_file = load_file_checked(my_path);
                     let contents = my_file;
                     let mut extension = get_extension_from_filename(path_string.as_str());
                     let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
@@ -394,7 +394,7 @@ fn main() -> std::io::Result<()> {
                                 // Non programming language extension
                                 None => {
                                     extension = Some("markdown");
-                                    let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension 2")).expect("Can't call get_language from extension 2"));
+                                    let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension II")).expect("Can't call get_language from extension 2"));
                                     my_buffer.set_text(contents.as_str());
                                     my_view.set_buffer(Some(&my_buffer));
                                     scrolled_window.add(&my_view);
