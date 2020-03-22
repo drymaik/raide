@@ -1,28 +1,29 @@
-use std::convert::TryInto;
-use gio::{ApplicationFlags};
 use gio::prelude::*;
+use gio::ApplicationFlags;
 use glib::clone;
 use gtk::prelude::*;
 use gtk::{
-    BoxExt, CellRendererText, ContainerExt, IconSize, Notebook, NotebookExt, Orientation, Paned,
-    ReliefStyle, ScrolledWindow, ScrolledWindowExt, TextBuffer, ToolButton, Toolbar, TreeIter,
+    ApplicationWindow, BoxExt, Button, CellRendererText, ComboBox, ComboBoxExt, ComboBoxText,
+    ComboBoxTextExt, ContainerExt, DialogExt, FileChooserAction, FileChooserDialog, GtkWindowExt,
+    IconSize, Image, Label, Notebook, NotebookExt, Orientation, Paned, ReliefStyle, ResponseType,
+    ScrolledWindow, ScrolledWindowExt, SelectionMode, TextBuffer, ToolButton, Toolbar, TreeIter,
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
-    WidgetExt,Image, GtkWindowExt,Label,ResponseType, ApplicationWindow, FileChooserDialog,SelectionMode,
-    FileChooserAction,DialogExt,Button,ComboBoxExt, ComboBox, ComboBoxTextExt, ComboBoxText,
+    WidgetExt,
 };
 use raide::ctags_api::read;
 use raide::mapping::get_by_left;
 use raide::ui::UI;
-use raide::utils::{load_invalid_file};
-use raide::workspace::{Runcommand, load_workspace};
+use raide::utils::load_invalid_file;
+use raide::workspace::{load_workspace, Runcommand};
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::convert::TryInto;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
-use std::fs::{metadata};
-use std::io::{Error};
+use std::fs::metadata;
+use std::io::Error;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -37,10 +38,7 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore) {
         None,
         None,
         &[0, 1],
-        &[
-            &my_ws.name.to_value(),
-            &"Project settings".to_value(),
-        ],
+        &[&my_ws.name.to_value(), &"Project settings".to_value()],
     );
 
     // TODO Move to user defined open directory
@@ -55,31 +53,42 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore) {
     // let mut exclude_list = Vec::<String>::new();
     // exclude_list.push("target".to_owned());
 
-
     for path in paths {
         add_node(&my_store, &path, Some(&my_parent));
     }
 
     // Now adding the tabs
-
 }
 
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     // read();
 
-
-
     // Load image
+    let mut folder_is_set = true;
+    let mut overwrite_dir = ".".to_string();
+    let mut my_dir = env::args().nth(1);
 
-    let mut my_dir = env::args()
-            .nth(1)
-            .unwrap_or_else(|| ".".to_string());
-
-            // Converts . to the long version of current working directory
-            if my_dir == ".".to_string() {
-                my_dir = std::env::current_dir().expect("Can't cast to current working directory").to_str().expect("Can't cast back to str").to_string();
+    match my_dir {
+        None => {
+            folder_is_set = false;
+        }
+        Some(value) => {
+            if value == ".".to_string() {
+                overwrite_dir = std::env::current_dir()
+                    .expect("Can't cast to current working directory")
+                    .to_str()
+                    .expect("Can't cast back to str")
+                    .to_string();
+            } else {
+                overwrite_dir = value;
             }
+        }
+    }
+    let my_dir = overwrite_dir;
+    // Just assume that the argument is a path
+
+    // Converts . to the long version of current working directory
 
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
@@ -171,7 +180,8 @@ fn main() -> std::io::Result<()> {
         outputview.set_property("cursor-visible", &false).expect("property cursor-visible couldn't be set to false");
 
 
-/*
+// / /
+    if folder_is_set {
         let my_parent = treestore.insert_with_values(
             None,
             None,
@@ -200,7 +210,8 @@ fn main() -> std::io::Result<()> {
         for path in paths {
             add_node(&treestore, &path, Some(&my_parent));
         }
-        */
+}
+        // 77
 
 
         let paned = Paned::new(Orientation::Vertical);
@@ -469,8 +480,6 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-
-
 // https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
 pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
     Path::new(filename).extension().and_then(OsStr::to_str)
@@ -541,7 +550,7 @@ pub fn create_tab(
     widget: Widget,
 ) -> u32 {
     let children = notebook.get_children();
-    for (key,value) in children.iter().enumerate() {
+    for (key, value) in children.iter().enumerate() {
         let label_text = notebook.get_menu_label_text(value);
         let wrapped = label_text.expect("Text from label doesn't exist");
         if wrapped == my_path {
