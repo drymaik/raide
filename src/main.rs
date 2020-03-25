@@ -29,17 +29,25 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 
-pub fn open_project(path: &Path, my_store: &mut TreeStore) {
+pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut ComboBoxText) -> Vec<Runcommand> {
     // This needs loading of the workspace
     // than adding tabs at the left side
 
     let my_ws = load_workspace(path);
+
+    let my_commands = my_ws.commands;
+
+    // Adding commands
+    combo_box.insert_text(0,&path.to_str().expect("Can't extract project path to str"));
+    combo_box.set_active(Some(0));
     let my_parent = my_store.insert_with_values(
         None,
         None,
         &[0, 1],
         &[&my_ws.name.to_value(), &"Project settings".to_value()],
     );
+
+    // Hier fehlen noch die Commands
 
     // TODO Move to user defined open directory
     let mut paths = fs::read_dir(path)
@@ -56,8 +64,7 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore) {
     for path in paths {
         add_node(&my_store, &path, Some(&my_parent));
     }
-
-    // Now adding the tabs
+    my_commands
 }
 
 fn main() -> std::io::Result<()> {
@@ -72,6 +79,11 @@ fn main() -> std::io::Result<()> {
     match my_dir {
         None => {
             folder_is_set = false;
+            overwrite_dir = std::env::current_dir()
+                .expect("Can't cast to current working directory")
+                .to_str()
+                .expect("Can't cast back to str")
+                .to_string();
         }
         Some(value) => {
             if value == ".".to_string() {
@@ -88,11 +100,8 @@ fn main() -> std::io::Result<()> {
     let my_dir = overwrite_dir;
     // Just assume that the argument is a path
 
-    // Converts . to the long version of current working directory
-
     let uiapp = gtk::Application::new(
         Some("org.gtkrsnotes.demo"),
-        //ApplicationFlags::HANDLES_COMMAND_LINE,
         ApplicationFlags::FLAGS_NONE,
     )
     .expect("Application::new failed");
@@ -133,9 +142,7 @@ fn main() -> std::io::Result<()> {
         ],
     );
 
-    let open_content = load_workspace(Path::new(&raide_dir));
 
-    let my_commands = open_content.commands;
 
     // Storing the editor in this main widget
     let gridbox = gtk::Box::new(Orientation::Vertical, 5);
@@ -143,9 +150,12 @@ fn main() -> std::io::Result<()> {
     // Put a combobox and a toolbar as a workspace command palette
     // Put this inside a loop
     let combo_box = ComboBoxText::new();
-    combo_box.append_text("Project 1");
-    combo_box.append_text("Project 2");
-    combo_box.set_active(Some(1));
+    combo_box.connect_changed(clone!(@weak combo_box => move |_| {
+        let active = combo_box.get_active_text().expect("There is no text in the combo_box");
+        println!("Load the following workspace: {}", active);
+        // Really load the workspace
+        // TODO check that the workspace is not loaded
+    }));
 
     let my_box = gtk::Box::new(Orientation::Horizontal, 5);
     my_box.add(&combo_box);
@@ -153,9 +163,7 @@ fn main() -> std::io::Result<()> {
 
 
     // Toolbar contains at least a save button for a file
-    let tool_bar = Toolbar::new();
-        let save_button = ToolButton::new::<Widget>(None, Some("Save"));
-        tool_bar.insert(&save_button, 0);
+
 
         let manager = LanguageManager::new();
 
@@ -166,6 +174,10 @@ fn main() -> std::io::Result<()> {
         win.set_default_size(1024, 768);
         win.set_title("Raide");
 
+
+        let tool_bar = Toolbar::new();
+            let save_button = ToolButton::new::<Widget>(None, Some("Save"));
+            tool_bar.insert(&save_button, 0);
 
         gridbox.add(&tool_bar);
 
@@ -179,39 +191,16 @@ fn main() -> std::io::Result<()> {
         outputview.set_property("editable", &false).expect("property editable couldn't be set to false");
         outputview.set_property("cursor-visible", &false).expect("property cursor-visible couldn't be set to false");
 
+        // This goes through all commands, this should be inside the workspace loader
+        let mut my_commands = Vec::<Runcommand>::new();
 
-// / /
+    let mut treestore = treestore.clone();
+    let mut combo_box = combo_box.clone();
     if folder_is_set {
-        let my_parent = treestore.insert_with_values(
-            None,
-            None,
-            &[0, 1],
-            &[
-                &open_content.name.to_value(),
-                &"Project settings".to_value(),
-            ],
-        );
+        // workspace vector
 
-        //
-
-        // TODO Move to user defined open directory
-        let mut paths = fs::read_dir(project_dir.clone())
-            .expect("Can't read workspace path given by user")
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, Error>>()
-            .expect("Cannot collect workspace data into vector");
-        paths.sort();
-
-        // TODO add files that should be ignored
-        // let mut exclude_list = Vec::<String>::new();
-        // exclude_list.push("target".to_owned());
-
-
-        for path in paths {
-            add_node(&treestore, &path, Some(&my_parent));
-        }
+        my_commands = open_project(Path::new(&raide_dir), &mut treestore, &mut combo_box);
 }
-        // 77
 
 
         let paned = Paned::new(Orientation::Vertical);
@@ -239,6 +228,7 @@ fn main() -> std::io::Result<()> {
         let my_ui = Rc::new(RefCell::new(UI {lang: manager.clone(), notebook: notebook.clone(), tabs: tabs.clone(), tree_selection: tree_selection.clone() }));
 
         // Scoping hack to use my_ui multiple times for consuming closures
+        // TODO Setting of the commands
         {
          let my_ui = my_ui.clone();
          for i in my_commands {
@@ -428,8 +418,11 @@ fn main() -> std::io::Result<()> {
 
                 {
                 let mut treestore = treestore.clone();
+                let mut combo_box = combo_box.clone();
                 my_button.connect_clicked(move |_| {
                     let mut treestore = treestore.clone();
+                    let mut combo_box = combo_box.clone();
+
                     let my_file_dialog = FileChooserDialog::with_buttons::<ApplicationWindow>(Some(&"Open Folder"), None, FileChooserAction::SelectFolder, &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)]);
                     my_file_dialog.set_select_multiple(true);
                     let result = my_file_dialog.run();
@@ -440,9 +433,12 @@ fn main() -> std::io::Result<()> {
                         ResponseType::Cancel => {}
                         ResponseType::Accept => {
                             for element in files {
-                                open_project(&element, &mut treestore);
+                                combo_box.insert_text(0,&element.clone().into_os_string().into_string().expect("Can't cast into OS_String"));
+                                open_project(&element, &mut treestore, &mut combo_box);
                                 println!("Open project at {:?}", element);
                             }
+                            combo_box.set_active(Some(0));
+
                         }
                         _ => {}
                     }

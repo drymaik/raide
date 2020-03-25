@@ -16,6 +16,7 @@ pub struct Workspace {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Runcommand {
     pub name: String,
+    pub home: String,
     pub has_button: bool,
     pub command: String,
     pub key_binding: Option<String>,
@@ -39,6 +40,7 @@ impl Runcommand {
                     my_command.arg(value);
                 }
             }
+            my_command.current_dir(Path::new(&self.home));
             Some(my_command)
         }
     }
@@ -107,6 +109,7 @@ impl Runcommand {
 pub fn load_workspace(path: &Path) -> Workspace {
     let build_command = Runcommand {
         name: "build".to_string(),
+        home: path.to_str().expect("Casting to str in build").to_string(),
         has_button: true,
         command: "cargo build".to_string(),
         key_binding: None,
@@ -114,6 +117,7 @@ pub fn load_workspace(path: &Path) -> Workspace {
 
     let run_command = Runcommand {
         name: "run".to_string(),
+        home: path.to_str().expect("Casting to str in build").to_string(),
         has_button: true,
         command: "./file".to_string(),
         key_binding: None,
@@ -121,6 +125,7 @@ pub fn load_workspace(path: &Path) -> Workspace {
 
     let format_command = Runcommand {
         name: "format".to_string(),
+        home: path.to_str().expect("Casting to str in build").to_string(),
         has_button: true,
         command: "rustfmt {file}".to_string(),
         key_binding: None,
