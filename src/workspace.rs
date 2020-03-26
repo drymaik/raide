@@ -173,6 +173,7 @@ pub fn load_workspace(path: &Path) -> Workspace {
         // Load the workspace from the given path (raide.ron)
         let ws_file = load_file_checked(full_path);
         let ws_contents = ws_file;
+        println!("CONTENTS: {}", ws_contents);
 
         my_ws = ron::de::from_str(&ws_contents).expect("Writing file data into workspace object failed");
         my_ws

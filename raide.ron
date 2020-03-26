@@ -1,5 +1,5 @@
 (
     name: "raide",
     exclude_files: [],
-    commands: [(name:"build",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"cargo build",key_binding:None,),(name:"run",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"./file",key_binding:None,),(name:"format",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"rustfmt {file}",key_binding:None,),],
+    commands: [(name:"build",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"cargo build",key_binding:None,),(name:"run",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"./file",key_binding:None,),(name:"done",home:"/home/maik/Dokumente/Leben/raide",has_button:true,command:"rustfmt {file}",key_binding:None,),],
 )

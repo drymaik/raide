@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use gio::prelude::*;
 use gio::ApplicationFlags;
 use glib::clone;
@@ -29,6 +30,87 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 
+pub fn command_registry(project_dir: String, my_commands: Vec<Runcommand>,my_ui: Rc<RefCell<UI>>, outputview: &View, tool_bar: &Toolbar) {
+    let manager = &my_ui.deref().borrow_mut().lang;
+    println!("Command length is: {}", my_commands.len());
+    // let notebook = &my_ui.deref().borrow_mut().notebook;
+    for i in my_commands {
+
+   // Determine when registering should happen of Button function
+   let register = i.has_template();
+   let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+
+   // TODO outputview should have the same highlighting language as the open tab
+   // Check if command is valid
+   let outputview = outputview.clone();
+   let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed Gtk3-dev and gtksourceview3?");
+   let fake_buffer = Buffer::new_with_language(&outlang.clone());
+   let my_ui = my_ui.clone();
+   // let project_dir = project_dir.clone();
+  {
+
+   // Real magic happens here
+   let handle = Rc::new(RefCell::new(project_dir.clone()));
+    let handle1 = handle.clone();
+   custom_button.connect_clicked(move |_|  {
+
+
+ // Checks if active tab should be considered while executing command
+  if register {
+       let notebook = &my_ui.deref().borrow_mut().notebook;
+       let content = notebook.get_focus_child();
+       match content {
+           None => {
+               println!("Tab is not selected");
+           }
+           Some(value) => {
+               // Get the path stored inside the label
+               let label_text = notebook.get_menu_label_text(&value);
+               let window = value.downcast::<ScrolledWindow>().expect("Can't cast window to a scrolled window");
+               let inside_view = window.get_child().expect("The child of the window is empty").downcast::<View>().expect("Can't cast Widget as view");
+               let inside_buffer = inside_view.get_buffer().expect("Buffer is not accessible inside view");
+
+               let text_iter_start = inside_buffer.get_start_iter();
+               let text_iter_end = inside_buffer.get_end_iter();
+               let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
+               let plain_text = the_text.expect("Plain text from buffer doesn't exist").to_string();
+
+               let wrapped = label_text.expect("Text from label doesn't exist");
+               println!("Before");
+               println!("Wrapper: {}", wrapped);
+              // Save to the file using the path
+               fs::write(Path::new(&wrapped), plain_text).expect("Should write");
+               let mut clone_i = i.clone();
+                clone_i.template_command(&Path::new(&wrapped).to_str().expect("The path can't be cast to a string"));
+                println!("I: {:?}",clone_i);
+
+                let output = Runcommand::execute_command(clone_i.clone(), &handle1.deref().borrow_mut().to_string());
+       if !output.is_empty() {
+           // Something to display
+           fake_buffer.set_text(&output);
+           outputview.set_buffer(Some(&fake_buffer));
+       }
+       println!("Output is: {}", output);
+   }
+        }
+    }
+
+       // Displaying without registering
+       let output = Runcommand::execute_command(i.clone(), &handle1.deref().borrow_mut().to_string());
+       if !output.is_empty() {
+
+           fake_buffer.set_text(&output);
+           outputview.set_buffer(Some(&fake_buffer));
+       }
+       println!("Output is: {}", output);
+   });
+
+   }
+   tool_bar.add(&custom_button);
+   println!("Added the button with?");
+}
+
+}
 pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut ComboBoxText) -> Vec<Runcommand> {
     // This needs loading of the workspace
     // than adding tabs at the left side
@@ -36,6 +118,7 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut Combo
     let my_ws = load_workspace(path);
 
     let my_commands = my_ws.commands;
+    println!("Loading for path {}: Commands: {}", path.to_str().expect("Should go"), my_commands.len());
 
     // Adding commands
     combo_box.insert_text(0,&path.to_str().expect("Can't extract project path to str"));
@@ -46,8 +129,6 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut Combo
         &[0, 1],
         &[&my_ws.name.to_value(), &"Project settings".to_value()],
     );
-
-    // Hier fehlen noch die Commands
 
     // TODO Move to user defined open directory
     let mut paths = fs::read_dir(path)
@@ -61,9 +142,10 @@ pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut Combo
     // let mut exclude_list = Vec::<String>::new();
     // exclude_list.push("target".to_owned());
 
-    for path in paths {
-        add_node(&my_store, &path, Some(&my_parent));
+    for fpath in paths {
+        add_node(&my_store, &fpath, Some(&my_parent));
     }
+    println!("Returning: {}", my_commands.len());
     my_commands
 }
 
@@ -200,7 +282,9 @@ fn main() -> std::io::Result<()> {
         // workspace vector
 
         my_commands = open_project(Path::new(&raide_dir), &mut treestore, &mut combo_box);
-}
+
+        // Command inserting routine needed
+    }
 
 
         let paned = Paned::new(Orientation::Vertical);
@@ -230,7 +314,16 @@ fn main() -> std::io::Result<()> {
         // Scoping hack to use my_ui multiple times for consuming closures
         // TODO Setting of the commands
         {
+            let my_ui = my_ui.clone();
+            command_registry(raide_dir.clone(), my_commands.clone(), my_ui, &outputview, &tool_bar);
+        }
+        {
          let my_ui = my_ui.clone();
+
+
+        // command_registry(&project_dir, &my_commands, &my_ui, &outputview, &tool_bar);
+/*
+
          for i in my_commands {
 
         // Determine when registering should happen of Button function
@@ -302,7 +395,7 @@ fn main() -> std::io::Result<()> {
         }
         tool_bar.add(&custom_button);
     }
-
+*/
         save_button.connect_clicked(move |_| {
             let notebook = &my_ui.deref().borrow_mut().notebook;
 
@@ -419,6 +512,12 @@ fn main() -> std::io::Result<()> {
                 {
                 let mut treestore = treestore.clone();
                 let mut combo_box = combo_box.clone();
+                let my_ui = my_ui.clone();
+                let tool_bar = tool_bar.clone();
+                let raide_dir = raide_dir.clone();
+                let outputview = outputview.clone();
+                let my_commands = my_commands.clone();
+
                 my_button.connect_clicked(move |_| {
                     let mut treestore = treestore.clone();
                     let mut combo_box = combo_box.clone();
@@ -434,8 +533,14 @@ fn main() -> std::io::Result<()> {
                         ResponseType::Accept => {
                             for element in files {
                                 combo_box.insert_text(0,&element.clone().into_os_string().into_string().expect("Can't cast into OS_String"));
-                                open_project(&element, &mut treestore, &mut combo_box);
+                                let my_commands = open_project(&element, &mut treestore, &mut combo_box);
                                 println!("Open project at {:?}", element);
+                                let my_ui = my_ui.clone();
+                            //    println!("Toolbar_elements: {}", tool_bar.get_children().len());
+                                command_registry(raide_dir.clone(), my_commands.clone(), my_ui, &outputview, &tool_bar);
+                            //    println!("Toolbar_elements after Update: {}", tool_bar.get_children().len());
+
+                            //    gridbox.add(&tool_bar);
                             }
                             combo_box.set_active(Some(0));
 
@@ -465,6 +570,10 @@ fn main() -> std::io::Result<()> {
 
         gridbox.add(&second_paned);
 
+
+        // setting now the toolbar
+    //    let tool_bar = tool_bar.clone();
+    //    gridbox.add(&tool_bar);
         win.add(&gridbox);
 
         // Don't forget to make all widgets visible.
