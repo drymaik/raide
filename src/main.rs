@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use gio::prelude::*;
 use gio::ApplicationFlags;
 use glib::clone;
@@ -17,6 +16,7 @@ use raide::ui::UI;
 use raide::utils::load_file_checked;
 use raide::workspace::{load_workspace, Runcommand};
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::convert::TryInto;
@@ -24,104 +24,136 @@ use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::metadata;
+use std::fs::read_dir;
 use std::io::Error;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
 
-pub fn command_registry(project_dir: String, my_commands: Vec<Runcommand>,my_ui: Rc<RefCell<UI>>, outputview: &View, tool_bar: &Toolbar) {
+pub fn command_registry(
+    project_dir: String,
+    my_commands: Vec<Runcommand>,
+    my_ui: Rc<RefCell<UI>>,
+    outputview: &View,
+    tool_bar: &Toolbar,
+) {
     let manager = &my_ui.deref().borrow_mut().lang;
     println!("Command length is: {}", my_commands.len());
     // let notebook = &my_ui.deref().borrow_mut().notebook;
     for i in my_commands {
+        // Determine when registering should happen of Button function
+        let register = i.has_template();
+        let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
 
-   // Determine when registering should happen of Button function
-   let register = i.has_template();
-   let custom_button = ToolButton::new::<Widget>(None, Some(&i.name));
+        // TODO outputview should have the same highlighting language as the open tab
+        // Check if command is valid
+        let outputview = outputview.clone();
+        let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed Gtk3-dev and gtksourceview3?");
+        let fake_buffer = Buffer::new_with_language(&outlang.clone());
+        let my_ui = my_ui.clone();
+        // let project_dir = project_dir.clone();
+        {
+            // Real magic happens here
+            let handle = Rc::new(RefCell::new(project_dir.clone()));
+            let handle1 = handle.clone();
+            custom_button.connect_clicked(move |_| {
+                // Checks if active tab should be considered while executing command
+                if register {
+                    let notebook = &my_ui.deref().borrow_mut().notebook;
+                    let content = notebook.get_focus_child();
+                    match content {
+                        None => {
+                            println!("Tab is not selected");
+                        }
+                        Some(value) => {
+                            // Get the path stored inside the label
+                            let label_text = notebook.get_menu_label_text(&value);
+                            let window = value
+                                .downcast::<ScrolledWindow>()
+                                .expect("Can't cast window to a scrolled window");
+                            let inside_view = window
+                                .get_child()
+                                .expect("The child of the window is empty")
+                                .downcast::<View>()
+                                .expect("Can't cast Widget as view");
+                            let inside_buffer = inside_view
+                                .get_buffer()
+                                .expect("Buffer is not accessible inside view");
 
-   // TODO outputview should have the same highlighting language as the open tab
-   // Check if command is valid
-   let outputview = outputview.clone();
-   let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed Gtk3-dev and gtksourceview3?");
-   let fake_buffer = Buffer::new_with_language(&outlang.clone());
-   let my_ui = my_ui.clone();
-   // let project_dir = project_dir.clone();
-  {
+                            let text_iter_start = inside_buffer.get_start_iter();
+                            let text_iter_end = inside_buffer.get_end_iter();
+                            let the_text =
+                                inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
+                            let plain_text = the_text
+                                .expect("Plain text from buffer doesn't exist")
+                                .to_string();
 
-   // Real magic happens here
-   let handle = Rc::new(RefCell::new(project_dir.clone()));
-    let handle1 = handle.clone();
-   custom_button.connect_clicked(move |_|  {
+                            let wrapped = label_text.expect("Text from label doesn't exist");
+                            println!("Before");
+                            println!("Wrapper: {}", wrapped);
+                            // Save to the file using the path
+                            fs::write(Path::new(&wrapped), plain_text).expect("Should write");
+                            let mut clone_i = i.clone();
+                            clone_i.template_command(
+                                &Path::new(&wrapped)
+                                    .to_str()
+                                    .expect("The path can't be cast to a string"),
+                            );
+                            println!("I: {:?}", clone_i);
 
+                            let output = Runcommand::execute_command(
+                                clone_i.clone(),
+                                &handle1.deref().borrow_mut().to_string(),
+                            );
+                            if !output.is_empty() {
+                                // Something to display
+                                fake_buffer.set_text(&output);
+                                outputview.set_buffer(Some(&fake_buffer));
+                            }
+                            println!("Output is: {}", output);
+                        }
+                    }
+                }
 
- // Checks if active tab should be considered while executing command
-  if register {
-       let notebook = &my_ui.deref().borrow_mut().notebook;
-       let content = notebook.get_focus_child();
-       match content {
-           None => {
-               println!("Tab is not selected");
-           }
-           Some(value) => {
-               // Get the path stored inside the label
-               let label_text = notebook.get_menu_label_text(&value);
-               let window = value.downcast::<ScrolledWindow>().expect("Can't cast window to a scrolled window");
-               let inside_view = window.get_child().expect("The child of the window is empty").downcast::<View>().expect("Can't cast Widget as view");
-               let inside_buffer = inside_view.get_buffer().expect("Buffer is not accessible inside view");
-
-               let text_iter_start = inside_buffer.get_start_iter();
-               let text_iter_end = inside_buffer.get_end_iter();
-               let the_text = inside_buffer.get_text(&text_iter_start, &text_iter_end, true);
-               let plain_text = the_text.expect("Plain text from buffer doesn't exist").to_string();
-
-               let wrapped = label_text.expect("Text from label doesn't exist");
-               println!("Before");
-               println!("Wrapper: {}", wrapped);
-              // Save to the file using the path
-               fs::write(Path::new(&wrapped), plain_text).expect("Should write");
-               let mut clone_i = i.clone();
-                clone_i.template_command(&Path::new(&wrapped).to_str().expect("The path can't be cast to a string"));
-                println!("I: {:?}",clone_i);
-
-                let output = Runcommand::execute_command(clone_i.clone(), &handle1.deref().borrow_mut().to_string());
-       if !output.is_empty() {
-           // Something to display
-           fake_buffer.set_text(&output);
-           outputview.set_buffer(Some(&fake_buffer));
-       }
-       println!("Output is: {}", output);
-   }
+                // Displaying without registering
+                let output = Runcommand::execute_command(
+                    i.clone(),
+                    &handle1.deref().borrow_mut().to_string(),
+                );
+                if !output.is_empty() {
+                    fake_buffer.set_text(&output);
+                    outputview.set_buffer(Some(&fake_buffer));
+                }
+                println!("Output is: {}", output);
+            });
         }
+        tool_bar.add(&custom_button);
+        println!("Added the button with?");
     }
-
-       // Displaying without registering
-       let output = Runcommand::execute_command(i.clone(), &handle1.deref().borrow_mut().to_string());
-       if !output.is_empty() {
-
-           fake_buffer.set_text(&output);
-           outputview.set_buffer(Some(&fake_buffer));
-       }
-       println!("Output is: {}", output);
-   });
-
-   }
-   tool_bar.add(&custom_button);
-   println!("Added the button with?");
 }
-
-}
-pub fn open_project(path: &Path, my_store: &mut TreeStore, combo_box: &mut ComboBoxText) -> Vec<Runcommand> {
+pub fn open_project(
+    path: &Path,
+    my_store: &mut TreeStore,
+    combo_box: &mut ComboBoxText,
+) -> Vec<Runcommand> {
     // This needs loading of the workspace
     // than adding tabs at the left side
 
     let my_ws = load_workspace(path);
 
     let my_commands = my_ws.commands;
-    println!("Loading for path {}: Commands: {}", path.to_str().expect("Should go"), my_commands.len());
+    println!(
+        "Loading for path {}: Commands: {}",
+        path.to_str().expect("Should go"),
+        my_commands.len()
+    );
 
     // Adding commands
-    combo_box.insert_text(0,&path.to_str().expect("Can't extract project path to str"));
+    combo_box.insert_text(
+        0,
+        &path.to_str().expect("Can't extract project path to str"),
+    );
     combo_box.set_active(Some(0));
     let my_parent = my_store.insert_with_values(
         None,
@@ -182,11 +214,8 @@ fn main() -> std::io::Result<()> {
     let my_dir = overwrite_dir;
     // Just assume that the argument is a path
 
-    let uiapp = gtk::Application::new(
-        Some("org.gtkrsnotes.demo"),
-        ApplicationFlags::FLAGS_NONE,
-    )
-    .expect("Application::new failed");
+    let uiapp = gtk::Application::new(Some("org.gtkrsnotes.demo"), ApplicationFlags::FLAGS_NONE)
+        .expect("Application::new failed");
     // GTK closure that is home to all Gtk-Elements and Widgets
     uiapp.connect_activate(move |app| {
 
@@ -600,6 +629,67 @@ pub fn path_sorter(a: &PathBuf, b: &PathBuf) -> Ordering {
     Ordering::Equal
 }
 
+pub fn add_nodes(tree_store: &TreeStore, root: &Path) {
+    // TODO filter_method()
+    let mut current_level = root;
+    let mut buffer_stack = Vec::<String>::new();
+    let mut parent_stack = Vec::<Option<TreeIter>>::new();
+    buffer_stack.push(current_level.to_str().unwrap().to_string());
+    parent_stack.push(None);
+    //parent_stack.push(None);
+    //let par = parent_stack.pop();
+    // Having the iter earlier in scope
+    /*
+    let mut iter = match par {
+        Some(my_iter) => tree_store.append(my_iter.as_ref()),
+        None => tree_store.append(None),
+    };
+    */
+    //    let mut copy_iter: TreeIter;
+    while !buffer_stack.is_empty() {
+        let tmp = buffer_stack.pop().unwrap();
+        // let copy_clone = iter.clone();
+        let parent = parent_stack.pop();
+        //drop(iter);
+        let mut myref_vec = Vec::<&Option<&TreeIter>>::new();
+        let mut iter = match parent_stack.pop() {
+            Some(my_iter) => tree_store.append(my_iter.as_ref()),
+            None => tree_store.append(None),
+        };
+        let my_path = Path::new(&tmp);
+        let my_str = my_path.to_str().unwrap();
+        let leaf_os_str = my_path.file_name().unwrap();
+        let leaf_str = leaf_os_str.to_str().unwrap();
+        println!("Node: {:?}", tmp);
+        // Action: Inserting data
+        tree_store.set(
+            &iter,
+            &[0, 1],
+            &[&String::from(leaf_str), &String::from(my_str)],
+        );
+        // tree_store.push(tmp.clone());
+        // current_level is the path
+        current_level = Path::new(&tmp);
+        // let copy_iter = iter.clone();
+        if metadata(current_level).map(|m| m.is_dir()).unwrap_or(false) {
+            match read_dir(current_level) {
+                Ok(mut child_iter) => {
+                    // let copy_clone = iter.clone();
+                    //  let wrap_iter = Some(&iter);
+                    for child in child_iter {
+                        if let Ok(dir_entry) = child {
+                            buffer_stack.push(dir_entry.path().to_str().unwrap().to_string());
+                            parent_stack.push(Some(iter.clone()));
+                        }
+                    }
+                }
+                Err(e) => println!("Error updating tree: {}", e),
+            }
+        } else {
+            println!("Nur eine Datei");
+        }
+    }
+}
 // Recursive function to fill a TreeStore mode
 pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) {
     if let Some(full_path_str) = node.to_str() {
