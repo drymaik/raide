@@ -639,41 +639,41 @@ pub fn add_node(tree_store: &TreeStore, root: &Path) {
     while !buffer_stack.is_empty() {
         let tmp = buffer_stack.pop().unwrap();
         let parent = parent_stack.pop();
-        let mut myref_vec = Vec::<&Option<&TreeIter>>::new();
-        let mut iter = match parent {
-            Some(my_iter) => tree_store.append(my_iter.as_ref()),
-            None => {
-                println!("It is none");
-                tree_store.append(None)
-            }
-        };
         let my_path = Path::new(&tmp);
         let my_str = my_path.to_str().unwrap();
         let leaf_os_str = my_path.file_name().unwrap();
         let leaf_str = leaf_os_str.to_str().unwrap();
-        // Action: Inserting data
-        tree_store.set(
-            &iter,
-            &[0, 1],
-            &[&String::from(leaf_str), &String::from(my_str)],
-        );
-        // current_level is the path
-        current_level = Path::new(&tmp);
-        // current_level = current_level.parent().expect("Parent should be there");
-        if metadata(current_level).map(|m| m.is_dir()).unwrap_or(false) {
-            match read_dir(current_level) {
-                Ok(mut child_iter) => {
-                    for child in child_iter {
-                        if let Ok(dir_entry) = child {
-                            buffer_stack.push(dir_entry.path().to_str().unwrap().to_string());
-                            parent_stack.push(Some(iter.clone()));
+        if !(leaf_str.starts_with(".") || leaf_str.starts_with("target")) {
+            let mut iter = match parent {
+                Some(my_iter) => tree_store.append(my_iter.as_ref()),
+                None => {
+                    println!("It is none");
+                    tree_store.append(None)
+                }
+            };
+            // Action: Inserting data
+            tree_store.set(
+                &iter,
+                &[0, 1],
+                &[&String::from(leaf_str), &String::from(my_str)],
+            );
+            // current_level is the path
+            current_level = Path::new(&tmp);
+            if metadata(current_level).map(|m| m.is_dir()).unwrap_or(false) {
+                match read_dir(current_level) {
+                    Ok(mut child_iter) => {
+                        for child in child_iter {
+                            if let Ok(dir_entry) = child {
+                                buffer_stack.push(dir_entry.path().to_str().unwrap().to_string());
+                                parent_stack.push(Some(iter.clone()));
+                            }
                         }
                     }
+                    Err(e) => println!("Error updating tree: {}", e),
                 }
-                Err(e) => println!("Error updating tree: {}", e),
+            } else {
+                // println!("Just a file");
             }
-        } else {
-            // println!("Just a file");
         }
     }
 }
