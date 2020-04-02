@@ -175,7 +175,7 @@ pub fn open_project(
     // exclude_list.push("target".to_owned());
 
     for fpath in paths {
-        add_node(&my_store, &fpath, Some(&my_parent));
+        add_node(&my_store, &fpath);
     }
     println!("Returning: {}", my_commands.len());
     my_commands
@@ -629,53 +629,40 @@ pub fn path_sorter(a: &PathBuf, b: &PathBuf) -> Ordering {
     Ordering::Equal
 }
 
-pub fn add_nodes(tree_store: &TreeStore, root: &Path) {
+pub fn add_node(tree_store: &TreeStore, root: &Path) {
     // TODO filter_method()
     let mut current_level = root;
     let mut buffer_stack = Vec::<String>::new();
     let mut parent_stack = Vec::<Option<TreeIter>>::new();
     buffer_stack.push(current_level.to_str().unwrap().to_string());
     parent_stack.push(None);
-    //parent_stack.push(None);
-    //let par = parent_stack.pop();
-    // Having the iter earlier in scope
-    /*
-    let mut iter = match par {
-        Some(my_iter) => tree_store.append(my_iter.as_ref()),
-        None => tree_store.append(None),
-    };
-    */
-    //    let mut copy_iter: TreeIter;
     while !buffer_stack.is_empty() {
         let tmp = buffer_stack.pop().unwrap();
-        // let copy_clone = iter.clone();
         let parent = parent_stack.pop();
-        //drop(iter);
         let mut myref_vec = Vec::<&Option<&TreeIter>>::new();
-        let mut iter = match parent_stack.pop() {
+        let mut iter = match parent {
             Some(my_iter) => tree_store.append(my_iter.as_ref()),
-            None => tree_store.append(None),
+            None => {
+                println!("It is none");
+                tree_store.append(None)
+            }
         };
         let my_path = Path::new(&tmp);
         let my_str = my_path.to_str().unwrap();
         let leaf_os_str = my_path.file_name().unwrap();
         let leaf_str = leaf_os_str.to_str().unwrap();
-        println!("Node: {:?}", tmp);
         // Action: Inserting data
         tree_store.set(
             &iter,
             &[0, 1],
             &[&String::from(leaf_str), &String::from(my_str)],
         );
-        // tree_store.push(tmp.clone());
         // current_level is the path
         current_level = Path::new(&tmp);
-        // let copy_iter = iter.clone();
+        // current_level = current_level.parent().expect("Parent should be there");
         if metadata(current_level).map(|m| m.is_dir()).unwrap_or(false) {
             match read_dir(current_level) {
                 Ok(mut child_iter) => {
-                    // let copy_clone = iter.clone();
-                    //  let wrap_iter = Some(&iter);
                     for child in child_iter {
                         if let Ok(dir_entry) = child {
                             buffer_stack.push(dir_entry.path().to_str().unwrap().to_string());
@@ -686,12 +673,12 @@ pub fn add_nodes(tree_store: &TreeStore, root: &Path) {
                 Err(e) => println!("Error updating tree: {}", e),
             }
         } else {
-            println!("Nur eine Datei");
+            // println!("Just a file");
         }
     }
 }
 // Recursive function to fill a TreeStore mode
-pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) {
+pub fn add_node_recursive(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) {
     if let Some(full_path_str) = node.to_str() {
         if let Some(leaf_os_str) = node.file_name() {
             if let Some(leaf_str) = leaf_os_str.to_str() {
@@ -715,7 +702,7 @@ pub fn add_node(tree_store: &TreeStore, node: &Path, parent: Option<&TreeIter>) 
                                 }
                                 child_vec.sort_by(path_sorter);
                                 for child in child_vec.iter() {
-                                    add_node(tree_store, child.deref(), Some(&iter));
+                                    add_node(tree_store, child.deref());
                                 }
                             }
                             Err(e) => println!("Error updating tree: {}", e),
