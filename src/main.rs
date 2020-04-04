@@ -11,7 +11,7 @@ use gtk::{
     WidgetExt,
 };
 use raide::ctags_api::read;
-use raide::mapping::get_by_left;
+use raide::mapping::{file_extension_to_lang, get_by_left};
 use raide::ui::UI;
 use raide::utils::load_file_checked;
 use raide::workspace::{load_workspace, Runcommand};
@@ -501,7 +501,7 @@ fn main() -> std::io::Result<()> {
 
                         }
                         Some(ext) => {
-                            let lookup = get_by_left(ext);
+                            let lookup = file_extension_to_lang(ext);
                             match lookup {
                                 // Non programming language extension
                                 None => {
