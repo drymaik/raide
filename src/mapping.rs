@@ -1,29 +1,4 @@
 // (glob, lang)
-// extensions should be splitted by ; and compared individually
-/*
-pub static LANG_TYPES: &[(&str, &str)] = &[
-    ("rs", "rust"),
-    ("java", "java"),
-    ("r", "r"),
-    ("c", "c"),
-    ("cpp", "cpp"),
-    ("go", "go"),
-    ("html", "html"),
-    ("json", "json"),
-    ("jl", "julia"),
-    ("tex", "latex"),
-    ("lua", "lua"),
-    ("m", "matlab"),
-    ("php", "php"),
-    ("py", "python"),
-    ("rb", "ruby"),
-    ("toml", "toml"),
-    ("xml", "xml"),
-    ("md", "markdown"),
-    ("ron", "markdown"),
-];
-*/
-
 pub static LANG_TYPES: &[(&str, &str)] = &[
 ("*.abnf", "abnf"),
 ("*.as", "actionscript"),
@@ -159,7 +134,8 @@ pub static LANG_TYPES: &[(&str, &str)] = &[
 ("*.xslt;*.xsl", "xslt"),
 ("*.y;*.yacc", "yacc"),
 ("*.yaml;*.yml;", "yaml"),
-    ];
+];
+
 // returns the lang directly by the glob
 pub fn get_by_left(glob: &str) -> Option<&str> {
     for i in LANG_TYPES {
@@ -175,7 +151,7 @@ pub fn get_by_left(glob: &str) -> Option<&str> {
 }
 
 pub fn file_extension_to_lang(extension: &str) -> Option<&str> {
-    // First convert to glob
+    // First convert to glob, then immediately return the corresponding lang
     for i in LANG_TYPES {
         let globs = i.0.split(";");
         for k in globs {
@@ -186,20 +162,6 @@ pub fn file_extension_to_lang(extension: &str) -> Option<&str> {
     }
     // Not found
     Some("markdown")
-}
-
-pub fn file_extension_to_glob(extension: &str) -> String {
-    // "rs" -> "*.rs"
-    // Returning the glob
-    for i in LANG_TYPES {
-        let globs = i.0.split(";");
-        for k in globs {
-            if k.to_string().contains(extension) {
-                return k.to_string();
-            }
-        }
-    }
-    "*.markdown".to_string()
 }
 
 // returns the array of possible globs based on the language
