@@ -1,0 +1,6 @@
+[
+(tag:"Example raide.ron",file:"README.md",address:"/^## Example raide.ron$/;\"",kind:"s",),// [0]
+(tag:"Intended features",file:"README.md",address:"/^## Intended features$/;\"",kind:"s",),// [1]
+(tag:"Introduction",file:"README.md",address:"/^## Introduction$/;\"",kind:"s",),// [2]
+(tag:"raide",file:"README.md",address:"/^# raide$/;\"",kind:"c",),// [3]
+]

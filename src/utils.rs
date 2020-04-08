@@ -1,13 +1,14 @@
 use ron::ser::PrettyConfig;
-use std::path::{Path};
+use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read};
+use std::path::Path;
 /// Ron prettifier
 pub fn get_pretty() -> PrettyConfig {
     PrettyConfig {
         depth_limit: 2,
         new_line: "\n".to_string(),
-        indentor: "    ".to_string(),
+        indentor: "".to_string(),
         separate_tuple_members: true,
         enumerate_arrays: true,
     }
@@ -28,4 +29,9 @@ pub fn load_file_checked(path: &Path) -> String {
             return "File is not encoded in UTF-8!".to_string();
         }
     }
+}
+
+// https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
+pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
+    Path::new(filename).extension().and_then(OsStr::to_str)
 }

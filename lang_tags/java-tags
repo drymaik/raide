@@ -1,0 +1,4 @@
+[
+(tag:"main",file:"example.java",address:"/^public static void main(String[] args) {$/;\"",kind:"m",),// [0]
+(tag:"main",file:"next.java",address:"/^public static void main(String[] args) {$/;\"",kind:"m",),// [1]
+]

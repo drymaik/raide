@@ -10,10 +10,10 @@ use gtk::{
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
     WidgetExt,
 };
-use raide::ctags_api::read;
+use raide::ctags_api::{distribute_tags, load_tag};
 use raide::mapping::{file_extension_to_lang, get_by_left};
 use raide::ui::UI;
-use raide::utils::load_file_checked;
+use raide::utils::{get_extension_from_filename, load_file_checked};
 use raide::workspace::{load_workspace, Runcommand};
 use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
 use std::borrow::BorrowMut;
@@ -49,7 +49,7 @@ pub fn command_registry(
         // TODO outputview should have the same highlighting language as the open tab
         // Check if command is valid
         let outputview = outputview.clone();
-        let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed Gtk3-dev and gtksourceview3?");
+        let outlang = manager.get_language("rust").expect("Language Rust is not available in Language Manager. Have you installed gtk3-dev and gtksourceview3?");
         let fake_buffer = Buffer::new_with_language(&outlang.clone());
         let my_ui = my_ui.clone();
         // let project_dir = project_dir.clone();
@@ -183,7 +183,8 @@ pub fn open_project(
 
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
-    // read();
+    distribute_tags();
+    load_tag(Path::new("lang_tags/rust-tags"));
 
     // Load image
     let mut folder_is_set = true;
@@ -612,11 +613,6 @@ fn main() -> std::io::Result<()> {
     // uiapp.run(&env::args().collect::<Vec<_>>());
 
     Ok(())
-}
-
-// https://stackoverflow.com/questions/45291832/extracting-a-file-extension-from-a-given-path-in-rust-idiomatically
-pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
-    Path::new(filename).extension().and_then(OsStr::to_str)
 }
 
 // https://github.com/oakes/SolidOak/blob/master/src/ui.rs
