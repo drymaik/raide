@@ -15,7 +15,7 @@ use raide::mapping::{file_extension_to_lang, get_by_left};
 use raide::ui::UI;
 use raide::utils::{get_extension_from_filename, load_file_checked};
 use raide::workspace::{load_workspace, Runcommand};
-use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt};
+use sourceview::{Buffer, LanguageManager, LanguageManagerExt, View, ViewExt, CompletionProvider, CompletionProviderExt, CompletionWords, CompletionWordsExt, Completion, CompletionExt, CompletionBuilder};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -184,7 +184,7 @@ pub fn open_project(
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     distribute_tags();
-    load_tag(Path::new("lang_tags/rust-tags"));
+    //load_tag(Path::new("lang_tags/rust-tags"));
 
     // Load image
     let mut folder_is_set = true;
@@ -477,6 +477,7 @@ fn main() -> std::io::Result<()> {
 
                     // Generate a new view for the new tab
                     let my_view = View::new();
+                    
                     my_view.set_highlight_current_line(true);
                     my_view.set_auto_indent(true);
                     my_view.set_indent_on_tab(true);
@@ -489,6 +490,10 @@ fn main() -> std::io::Result<()> {
                     text_window.set_min_content_height(500);
 
                     // Set the buffers display extension .rs means Rust for example
+                    let text_completion = my_view.get_completion().unwrap();
+                    let file_provider = CompletionWords::new(Some(&"file"), None);
+                    let lang_provider = CompletionWords::new(Some(&"lang"), None);
+                    let std_provider = CompletionWords::new(Some(&"std"), None);
                     match extension {
                         None => {
                             // Set to markdown for displaying text
@@ -496,6 +501,23 @@ fn main() -> std::io::Result<()> {
                             let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
                             my_buffer.set_text(contents.as_str());
                             my_view.set_buffer(Some(&my_buffer));
+                            
+                            let my_tags = load_tag(Path::new(&format!("lang_tags/{}-tags",extension.expect("Failed unwrapping"))));
+                            
+                            file_provider.register(&my_buffer);
+                            text_completion.add_provider(&file_provider);
+                            
+                            let keyword_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                            for tag in my_tags {
+                            let mut text_iter_end = keyword_buffer.get_end_iter();
+                                keyword_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            lang_provider.register(&keyword_buffer);
+                            text_completion.add_provider(&lang_provider);
+
+                            // TODO: Add tags for language src
+                            
+
                             scrolled_window.add(&my_view);
                             let mut tabs = tabs.clone();
                             create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
@@ -510,6 +532,22 @@ fn main() -> std::io::Result<()> {
                                     let my_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension II")).expect("Can't call get_language from extension 2"));
                                     my_buffer.set_text(contents.as_str());
                                     my_view.set_buffer(Some(&my_buffer));
+
+                                    let my_tags = load_tag(Path::new(&format!("lang_tags/{}-tags",extension.expect("Failed unwrapping"))));
+                            
+                            file_provider.register(&my_buffer);
+                            text_completion.add_provider(&file_provider);
+                            
+                            let keyword_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                            for tag in my_tags {
+                            let mut text_iter_end = keyword_buffer.get_end_iter();
+                                keyword_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            lang_provider.register(&keyword_buffer);
+                            text_completion.add_provider(&lang_provider);
+
+                            // TODO: Add tags for language src
+
                                     scrolled_window.add(&my_view);
                                     let mut tabs = tabs.clone();
                                     create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
@@ -519,6 +557,22 @@ fn main() -> std::io::Result<()> {
                                     let my_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Existing language can't be used to instantiate buffer"));
                                     my_buffer.set_text(contents.as_str());
                                     my_view.set_buffer(Some(&my_buffer));
+
+                                    let my_tags = load_tag(Path::new(&format!("lang_tags/{}-tags",lang)));
+                            
+                            file_provider.register(&my_buffer);
+                            text_completion.add_provider(&file_provider);
+                            
+                            let keyword_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Can't call get_language from extension I"));
+                            for tag in my_tags {
+                            let mut text_iter_end = keyword_buffer.get_end_iter();
+                                keyword_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            lang_provider.register(&keyword_buffer);
+                            text_completion.add_provider(&lang_provider);
+
+                            // TODO: Add tags for language src
+
                                     scrolled_window.add(&my_view);
                                     let mut tabs = tabs.clone();
                                     create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());

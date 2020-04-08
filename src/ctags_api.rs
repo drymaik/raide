@@ -36,36 +36,31 @@ impl TagLine {
 }
 
 pub fn distribute_tags() {
-    // Hashmap needed for mapping lang -> Vec
+    // Hashmap needed for mapping lang -> Completion_Vec
     let mut lang_to_vec = HashMap::<String, Vec<TagLine>>::new();
 
     let my_tags = load_file_checked(Path::new("tags"));
     let lines: Vec<&str> = my_tags.split("\n").collect();
-    // tag datei pattern adresse kind
+    // tag file pattern address kind
     let prepath = "lang_tags/";
     create_dir(prepath.clone());
     for line in lines {
         let elements: Vec<&str> = line.split("\t").collect();
-        // Create files in output-folder
         if !elements.is_empty() {
-            //    println!("{:?},",elements);
+            // Ignore comments in tags file
             if !elements[0].contains("TAG") {
+                // No empty line/keyword
                 if elements[0] == "" {
                 } else {
                     // Now fill in the languages
                     let i_s = elements[1].to_string().clone();
                     let lang_name = get_extension_from_filename(&i_s).expect("Can't get extension");
+                    // Convert file_name to lang
                     let lang_name = file_extension_to_lang(lang_name).expect("Can't get lang key");
-                    // convert file_name to lang
                     File::create(format!("{}{}-tags", prepath, lang_name));
                     fs::remove_file(format!("{}{}-tags", prepath, lang_name)).expect("Problem");
                     File::create(format!("{}{}-tags", prepath, lang_name));
-
-                    // Create now the folder
                     if elements.len() >= 4 {
-                        // Now store in vector of the hashmap
-
-                        // Now fill the Vector
                         let opt_vec = lang_to_vec.get_mut(&lang_name.to_string());
                         match opt_vec {
                             Some(there) => there.push(TagLine::new(
@@ -116,8 +111,8 @@ pub fn distribute_tags() {
     }
 }
 
+// Load tag for lang - only once for every lang
 pub fn load_tag(path: &Path) -> Vec<TagLine> {
-    println!("Error is here");
     let file_string = load_file_checked(path);
     let my_vec: Vec<TagLine> = from_str(&file_string).unwrap();
     for i in &my_vec {
