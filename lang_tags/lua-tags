@@ -1,0 +1,3 @@
+[
+(tag:"probe",file:"test.lua",address:"/^function probe(zahl1, zahl2, text, tabelle)$/;\"",kind:"f",),// [0]
+]

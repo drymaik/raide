@@ -469,7 +469,10 @@ fn main() -> std::io::Result<()> {
                 if !metadata(my_path).map(|m| m.is_dir()).unwrap_or(false) {
                     // It is not a folder, continue normally
                     let my_file = load_file_checked(my_path);
-                    let contents = my_file;
+                    
+                    match my_file {
+                        Some(existing_file) => {
+                        let contents = existing_file;
                     let mut extension = get_extension_from_filename(path_string.as_str());
                     let scrolled_window = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
                     scrolled_window.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
@@ -580,6 +583,12 @@ fn main() -> std::io::Result<()> {
                             }
                         }
                     }
+                        }
+                        None => {
+                        
+                        }
+                    }
+                    
                 }
                 // It is a dir
 
