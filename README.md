@@ -1,21 +1,23 @@
 # raide
-Raide - A ray of light in the world of IDEs
+raide - A ray of light in the world of IDEs
 
 ![screenshot](pictures/Raide.png)
 
 ## Introduction
 
-Raide is a simple IDE with a multi project approach in mind. It features currently:
+raide is a simple IDE with a multi project approach in mind. It features currently:
 
 * A save button
 * Multiple Tabs of files that are closable and writable. Right click reveals the full path.
-* Source highlighting of many languages including Rust, Java, JSON and Markdown.
+* Source highlighting of all languages understood by gtksourceview, including Rust, Java, JSON and Markdown.
 * Generatable buttons with commands read from the workspace file raide.ron
-
-It is useful on platforms with limited resources, as the application requires only 70 MB RAM.
+* File-based completion, which completes text to previously typed words
+* Project-based completion, which completes text of the common programming language
+It is useful on platforms with limited resources, as the application requires only 90 MB RAM.
 ## Intended features
 
-Another useful feature would be code completion on file level, which is file and project dependent.
+* Another feature would be completion at standard library level of the respective language, which completes text to previously typed words.
+* File-based search and replace would be another feature
 
 ## Example raide.ron
 
