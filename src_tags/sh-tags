@@ -1,0 +1,6 @@
+[
+(tag:"cargo_test",file:"stdarch/ci/run.sh",address:"/^cargo_test() {$/;\"",kind:"f",),// [0]
+(tag:"dox",file:"stdarch/ci/dox.sh",address:"/^dox() {$/;\"",kind:"f",),// [1]
+(tag:"main",file:"stdarch/ci/android-sysimage.sh",address:"/^main() {$/;\"",kind:"f",),// [2]
+(tag:"run",file:"stdarch/ci/run-docker.sh",address:"/^run() {$/;\"",kind:"f",),// [3]
+]

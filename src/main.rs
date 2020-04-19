@@ -10,7 +10,7 @@ use gtk::{
     TreeSelectionExt, TreeStore, TreeStoreExt, TreeView, TreeViewColumn, TreeViewExt, Widget,
     WidgetExt,
 };
-use raide::ctags_api::{distribute_tags, load_tag};
+use raide::ctags_api::{distribute_tags, distribute_into, load_tag};
 use raide::mapping::{file_extension_to_lang, get_by_left};
 use raide::ui::UI;
 use raide::utils::{get_extension_from_filename, load_file_checked};
@@ -184,6 +184,7 @@ pub fn open_project(
 fn main() -> std::io::Result<()> {
     // Testing ctags api is in progress
     distribute_tags();
+    distribute_into("src_tags/tags", "src_tags/");
     //load_tag(Path::new("lang_tags/rust-tags"));
 
     // Load image
@@ -519,8 +520,20 @@ fn main() -> std::io::Result<()> {
                             lang_provider.register(&keyword_buffer);
                             text_completion.add_provider(&lang_provider);
 
-                            // TODO: Add tags for language src
+                            let my_std_tags = load_tag(Path::new(&format!("src_tags/{}-tags", extension.expect("Failed unwrapping std"))));
                             
+                            if !my_std_tags.is_empty() {
+
+                            
+                            let std_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                            for tag in my_std_tags {
+                            let mut text_iter_end = std_buffer.get_end_iter();
+                                std_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            std_provider.register(&std_buffer);
+                            text_completion.add_provider(&std_provider);
+                            }
+
 
                             scrolled_window.add(&my_view);
                             let mut tabs = tabs.clone();
@@ -550,8 +563,17 @@ fn main() -> std::io::Result<()> {
                             lang_provider.register(&keyword_buffer);
                             text_completion.add_provider(&lang_provider);
 
-                            // TODO: Add tags for language src
+                            let my_std_tags = load_tag(Path::new(&format!("src_tags/{}-tags", extension.expect("Failed unwrapping std"))));
 
+                            if !my_std_tags.is_empty() {
+                            let std_buffer = Buffer::new_with_language(&manager.get_language(extension.expect("Failed retrieving md highlighting from extension I")).expect("Can't call get_language from extension I"));
+                            for tag in my_std_tags {
+                            let mut text_iter_end = std_buffer.get_end_iter();
+                                std_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            std_provider.register(&std_buffer);
+                            text_completion.add_provider(&std_provider);
+                        }
                                     scrolled_window.add(&my_view);
                                     let mut tabs = tabs.clone();
                                     create_tab(&notebook, &mut tabs, last_string.as_str(),path_string.as_str(), scrolled_window.upcast());
@@ -575,8 +597,17 @@ fn main() -> std::io::Result<()> {
                             lang_provider.register(&keyword_buffer);
                             text_completion.add_provider(&lang_provider);
 
-                            // TODO: Add tags for language src
-
+                            
+                            let my_std_tags = load_tag(Path::new(&format!("src_tags/{}-tags", lang)));
+                            if !my_std_tags.is_empty() {
+                            let std_buffer = Buffer::new_with_language(&manager.get_language(lang).expect("Can't call get_language from extension I"));
+                            for tag in my_std_tags {
+                            let mut text_iter_end = std_buffer.get_end_iter();
+                                std_buffer.insert(&mut text_iter_end, &format!("{}\n",tag.tag));
+                            }
+                            std_provider.register(&std_buffer);
+                            text_completion.add_provider(&std_provider);
+                        }
                                     scrolled_window.add(&my_view);
                                     let mut tabs = tabs.clone();
                                     create_tab(&notebook, &mut tabs, last_string.as_str(), path_string.as_str(), scrolled_window.upcast());

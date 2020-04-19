@@ -1,0 +1,13 @@
+[
+(tag:"Codepoint",file:"libcore/unicode/printable.py",address:"/^Codepoint = namedtuple(\'Codepoint\', \'value class_\')$/;\"",kind:"v",),// [0]
+(tag:"NUM_CODEPOINTS",file:"libcore/unicode/printable.py",address:"/^NUM_CODEPOINTS=0x110000$/;\"",kind:"v",),// [1]
+(tag:"compress_normal",file:"libcore/unicode/printable.py",address:"/^def compress_normal(normal):$/;\"",kind:"f",),// [2]
+(tag:"compress_singletons",file:"libcore/unicode/printable.py",address:"/^def compress_singletons(singletons):$/;\"",kind:"f",),// [3]
+(tag:"get_codepoints",file:"libcore/unicode/printable.py",address:"/^def get_codepoints(f):$/;\"",kind:"f",),// [4]
+(tag:"get_escaped",file:"libcore/unicode/printable.py",address:"/^def get_escaped(codepoints):$/;\"",kind:"f",),// [5]
+(tag:"get_file",file:"libcore/unicode/printable.py",address:"/^def get_file(f):$/;\"",kind:"f",),// [6]
+(tag:"main",file:"libcore/unicode/printable.py",address:"/^def main():$/;\"",kind:"f",),// [7]
+(tag:"print_normal",file:"libcore/unicode/printable.py",address:"/^def print_normal(normal, normalname):$/;\"",kind:"f",),// [8]
+(tag:"print_singletons",file:"libcore/unicode/printable.py",address:"/^def print_singletons(uppers, lowers, uppersname, lowersname):$/;\"",kind:"f",),// [9]
+(tag:"to_ranges",file:"libcore/unicode/printable.py",address:"/^def to_ranges(iter):$/;\"",kind:"f",),// [10]
+]
