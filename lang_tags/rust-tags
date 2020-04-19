@@ -31,7 +31,7 @@
 (tag:"key_binding",file:"src/workspace.rs",address:"/^    pub key_binding: Option<String>,$/;\"",kind:"m",),// [29]
 (tag:"kind",file:"src/ctags_api.rs",address:"/^    pub kind: String,$/;\"",kind:"m",),// [30]
 (tag:"lang",file:"src/ui.rs",address:"/^    pub lang: LanguageManager,$/;\"",kind:"m",),// [31]
-(tag:"load_file_checked",file:"src/utils.rs",address:"/^pub fn load_file_checked(path: &Path) -> String {$/;\"",kind:"f",),// [32]
+(tag:"load_file_checked",file:"src/utils.rs",address:"/^pub fn load_file_checked(path: &Path) -> Option<String> {$/;\"",kind:"f",),// [32]
 (tag:"load_tag",file:"src/ctags_api.rs",address:"/^pub fn load_tag(path: &Path) -> Vec<TagLine> {$/;\"",kind:"f",),// [33]
 (tag:"load_workspace",file:"src/workspace.rs",address:"/^pub fn load_workspace(path: &Path) -> Workspace {$/;\"",kind:"f",),// [34]
 (tag:"main",file:"file.rs",address:"/^pub fn main() {$/;\"",kind:"f",),// [35]

@@ -335,6 +335,7 @@ fn main() -> std::io::Result<()> {
 
         // Left treeview is now complete
         project_pane.add(&treeview);
+        project_pane.set_size_request (200, -1);
         second_paned.add1(&project_pane);
         let tabs = Vec::<gtk::Box>::new();
 
